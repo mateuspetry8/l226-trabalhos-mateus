@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
 
 typedef struct 
 {
@@ -7,17 +10,28 @@ typedef struct
     char armasdia[11];
     char armasnoite[6]; 
     int escudos;
-    int modo;
-} Sistema;
+    int onda;
+    bool terminou;
+} estado_t;
 
-typedef struct
+char lechar()
 {
-    dia;
-    noite;
-}estado_t;
+    fflush(stdout);
+    char c;
+    if (fread(&c, 1, 1, stdin) == 1) return c;
+    return 0;
+}
+
+void inicializa_estado(estado_t *est)
+{
+    est->tiros = 0;
+    est->escudos = 3;
+    strcpy(est->armasdia, "0123456789n");
+    strcpy(est->armasnoite, "02468n");
+}
 
 void joga_onda(estado_t *est){
-    laco(){
+    while(){
         processar_teclado(est);
         processar_tempo(est);
         apresenta(est);
@@ -32,11 +46,13 @@ void joga_partida(estado_t *estado)
 }
 
 int main(){
+    system("stty raw -echo min 0 time 1 opost");
+    setvbuf(stdin, NULL, _IONBF, 0);
     estado_t estado;
     inicializa_tela();
     inicializa_estado(&estado);
     while (!estado.terminou);{
         joga_partida(&estado);
     }
-
+    system("stty sane");
 }
