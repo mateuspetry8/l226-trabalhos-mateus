@@ -9,15 +9,20 @@ typedef struct timespec crono;
 
 typedef struct 
 {
+    crono timer_onda;
+
     int pontos;
     int municao;
     int escudos;
     int onda;
+    int armaind;
 
-    bool terminou;
+    bool onda_ativa;
+    bool partida_ativa;
     bool ehdia;
 
-    char armas[11];
+    const char *armasdia;
+    const char *armasnoite;
     char areadia[13];
     char areanoite[8];
     char inimigosdia[20];
@@ -56,6 +61,12 @@ void configura_terminal()
     }
 }
 
+// configura o terminal para o modo normal
+void normaliza_terminal()
+{
+    system("stty sane");
+}
+
 // lê um caractere do teclado.
 char lechar()
 {
@@ -65,17 +76,81 @@ char lechar()
     return 0;
 }
 
+void seta_base(estado_t *est){
+    a
+}
+
 void inicializa_estado(estado_t *est)
 {
+    seta_base(est);
+    est->armasdia = "0123456789N";
+    est->armasnoite = "02468N";
+    est->armaind = 0;
     est->pontos = 0;
     est->onda = 1;
     est->municao = 30;
     est->escudos = 3;
-    est->terminou = false;
+    est->onda_ativa = true;
+    est->partida_ativa = true;
 }
 
-void joga_onda(estado_t *est){
-    while(){
+void processar_teclado(estado_t *est)
+{
+    char input = lechar();
+    switch (input)
+    {
+    case 27:
+        est->partida_ativa = false;
+        break;
+    case 9:
+        est->armaind++;
+        break;
+    case 13:
+        atira();
+        break;
+    case 32:
+        if (est->ehdia == false) sonar();
+        break;
+    default:
+        break;
+    }
+}
+
+void avanca_inimigos(estado_t *est)
+{
+
+}
+
+void processar_tempo(estado_t *est)
+{
+    if (crono_parcial(&est->timer_onda) >= 1.0) {
+        avanca_inimigos(est);
+        crono_inicia(&est->timer_onda);
+    }
+}
+
+void sorteia_inimigos(estado_t *est)
+{
+    if (est->ehdia) {
+        for (int i = 0; i < 20; i++) {
+            int randini;
+            randini = rand() % 11;
+            est->inimigosdia[i] = est->armasdia[randini];
+        }
+    }
+    else {
+        for (int i = 0; i < 15; i++) {
+            int randini;
+            randini = rand() % 6;
+            est->inimigosnoite[i] = est->armasnoite[randini];
+        }
+    }
+}
+
+void joga_onda(estado_t *est) 
+{
+    sorteia_inimigos(est);
+    while(est->onda_ativa) {
         processar_teclado(est);
         processar_tempo(est);
         apresenta(est);
@@ -84,24 +159,24 @@ void joga_onda(estado_t *est){
 
 void joga_partida(estado_t *est)
 {
-    while (!(est->terminou)) {
+    while ((est->partida_ativa)) {
+        crono_inicia(&est->timer_onda);
+        est->onda_ativa = 1;
         joga_onda(est);
+        if (!est->partida_ativa) {
+            if (!pergunta_continuar()) {
+                est->partida_ativa = 1;
+            }
+        }
     };
-}
-
-// configura o terminal para o modo normal
-void normaliza_terminal()
-{
-    system("stty sane");
 }
 
 int main(){
     configura_terminal();
     estado_t estado;
-    inicializa_tela();
+    srand(time(NULL));
+    //inicializa_tela();
     inicializa_estado(&estado);
-    while (!estado.terminou) {
-        joga_partida(&estado);
-    }
+    joga_partida(&estado);
     normaliza_terminal();
 }
