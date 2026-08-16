@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define areadiatam 13
+#define areanoitetam 8
+
+#define qtdinimigosdia 20 
+#define qtdinimigosnoite 15 
+
 // implementação de um cronômetro
 typedef struct timespec crono;
 
@@ -16,6 +22,7 @@ typedef struct
     int escudos;
     int onda;
     int armaind;
+    int rodada;
 
     bool onda_ativa;
     bool partida_ativa;
@@ -76,18 +83,27 @@ char lechar()
     return 0;
 }
 
-void seta_base(estado_t *est){
-    a
+void inicializa_base(estado_t *est)
+{
+    for(int i = 0; i < 3; i++) {
+        est->areadia[i] = ')';
+        est->areanoite[i] = ')';
+    }
+    for(int i = 3; i < 13; i++) {
+        est->areadia[i] = ' ';
+        if(i < 8) est->areanoite[i] = ' ';
+    }
 }
 
 void inicializa_estado(estado_t *est)
 {
-    seta_base(est);
+    inicializa_base(est);
     est->armasdia = "0123456789N";
     est->armasnoite = "02468N";
     est->armaind = 0;
     est->pontos = 0;
     est->onda = 1;
+    est->rodada = 0;
     est->municao = 30;
     est->escudos = 3;
     est->onda_ativa = true;
@@ -109,16 +125,41 @@ void processar_teclado(estado_t *est)
         atira();
         break;
     case 32:
-        if (est->ehdia == false) sonar();
+        //if (!est->ehdia) sonar();
         break;
     default:
         break;
     }
 }
 
+void avanca_dia(estado_t *est)
+{
+    char atual, prox;
+    for(int i = 0; i < areadiatam - 1; i++) {
+        atual = est->areadia[i];
+        prox = est->areadia[i + 1];
+        if(!(atual == ')' && prox == ' ')) atual = prox;
+    }
+    est->areadia[areadiatam - 1] = est->inimigosdia[est->rodada];
+    if (est->rodada < qtdinimigosdia - 1 )est->rodada++;
+}
+
+void avanca_noite(estado_t *est)
+{
+    char atual, prox;
+    for(int i = 0; i < areanoitetam - 1; i++) {
+        atual = est->areanoite[i];
+        prox = est->areanoite[i + 1];
+        if(!(atual == ')' && prox == ' ')) atual = prox;
+    }
+    est->areadia[areanoitetam - 1] = est->inimigosnoite[est->rodada];
+    if (est->rodada < qtdinimigosnoite - 1 )est->rodada++;
+}
+
 void avanca_inimigos(estado_t *est)
 {
-
+    if (est->ehdia) avanca_dia(est);
+    else avanca_noite(est);
 }
 
 void processar_tempo(estado_t *est)
@@ -147,14 +188,20 @@ void sorteia_inimigos(estado_t *est)
     }
 }
 
+void apresenta(estado_t *est)
+{
+    printf("%d %d %c", est->pontos, est->municao, est->armasdia[est->armaind]);
+}
+
 void joga_onda(estado_t *est) 
 {
     sorteia_inimigos(est);
     while(est->onda_ativa) {
+        apresenta(est);
         processar_teclado(est);
         processar_tempo(est);
-        apresenta(est);
     }
+    est->rodada = 0;
 }
 
 void joga_partida(estado_t *est)
@@ -163,12 +210,12 @@ void joga_partida(estado_t *est)
         crono_inicia(&est->timer_onda);
         est->onda_ativa = 1;
         joga_onda(est);
-        if (!est->partida_ativa) {
+        /*if (!est->partida_ativa) {
             if (!pergunta_continuar()) {
                 est->partida_ativa = 1;
             }
-        }
-    };
+        }*/
+    }
 }
 
 int main(){
