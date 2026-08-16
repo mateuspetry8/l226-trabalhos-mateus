@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define areadiatam 13
-#define areanoitetam 8
+#define areadiatam 14
+#define areanoitetam 9
 
 #define qtdinimigosdia 20 
 #define qtdinimigosnoite 15 
@@ -30,8 +30,8 @@ typedef struct
 
     const char *armasdia;
     const char *armasnoite;
-    char areadia[13];
-    char areanoite[8];
+    char areadia[14];
+    char areanoite[9];
     char inimigosdia[20];
     char inimigosnoite[15];
 } estado_t;
@@ -85,13 +85,15 @@ char lechar()
 
 void inicializa_base(estado_t *est)
 {
-    for(int i = 0; i < 3; i++) {
+    est->areadia[0] = ' ';
+    est->areanoite[0] = ' ';
+    for(int i = 1; i < 4; i++) {
         est->areadia[i] = ')';
         est->areanoite[i] = ')';
     }
-    for(int i = 3; i < 13; i++) {
+    for(int i = 4; i < 14; i++) {
         est->areadia[i] = ' ';
-        if(i < 8) est->areanoite[i] = ' ';
+        if(i < 9) est->areanoite[i] = ' ';
     }
 }
 
@@ -108,6 +110,7 @@ void inicializa_estado(estado_t *est)
     est->escudos = 3;
     est->onda_ativa = true;
     est->partida_ativa = true;
+    est->ehdia = true;
 }
 
 void processar_teclado(estado_t *est)
@@ -117,12 +120,13 @@ void processar_teclado(estado_t *est)
     {
     case 27:
         est->partida_ativa = false;
+        est->onda_ativa = false;
         break;
     case 9:
         est->armaind++;
         break;
     case 13:
-        atira();
+        //atira();
         break;
     case 32:
         //if (!est->ehdia) sonar();
@@ -132,28 +136,32 @@ void processar_teclado(estado_t *est)
     }
 }
 
+void checa_escudo(estado_t *est)
+{
+    int i = est->escudos;
+    if (est->areadia[i] != ')') {
+        est->areadia[i] = ' ';
+        est->escudos--;
+    }
+}
+
 void avanca_dia(estado_t *est)
 {
     char atual, prox;
-    for(int i = 0; i < areadiatam - 1; i++) {
+    for(int i = 1; i < areadiatam - 1; i++) {
         atual = est->areadia[i];
         prox = est->areadia[i + 1];
-        if(!(atual == ')' && prox == ' ')) atual = prox;
+        if(atual != ')' && prox != ' ') est->areadia[i] = prox;
+        else if (atual == ')' && prox != ' ') est->areadia[i] = prox;
     }
+    if (est->escudos != 0) checa_escudo(est);
     est->areadia[areadiatam - 1] = est->inimigosdia[est->rodada];
     if (est->rodada < qtdinimigosdia - 1 )est->rodada++;
 }
 
 void avanca_noite(estado_t *est)
 {
-    char atual, prox;
-    for(int i = 0; i < areanoitetam - 1; i++) {
-        atual = est->areanoite[i];
-        prox = est->areanoite[i + 1];
-        if(!(atual == ')' && prox == ' ')) atual = prox;
-    }
-    est->areadia[areanoitetam - 1] = est->inimigosnoite[est->rodada];
-    if (est->rodada < qtdinimigosnoite - 1 )est->rodada++;
+    
 }
 
 void avanca_inimigos(estado_t *est)
@@ -191,6 +199,10 @@ void sorteia_inimigos(estado_t *est)
 void apresenta(estado_t *est)
 {
     printf("%d %d %c", est->pontos, est->municao, est->armasdia[est->armaind]);
+    for (int i = 1; i < areadiatam; i++) {
+        printf("%c", est->areadia[i]);
+    }
+    printf("\r");
 }
 
 void joga_onda(estado_t *est) 
@@ -222,8 +234,8 @@ int main(){
     configura_terminal();
     estado_t estado;
     srand(time(NULL));
-    //inicializa_tela();
     inicializa_estado(&estado);
+    //inicializa_tela();
     joga_partida(&estado);
     normaliza_terminal();
 }
