@@ -68,31 +68,37 @@ const char *id_som_ataque(char ataque)
     return "x";
 }
 
+// som do inimigo
 void tocar_som_ataque(char ataque)
 {
     tocar_som_id(id_som_ataque(ataque), false);
 }
 
+// som da arma atual
 void tocar_som_arma(char arma)
 {
     tocar_som_ataque(arma);
 }
 
+// som do escudo
 void tocar_som_escudo()
 {
     tocar_som_id("12", false);
 }
 
+// som do vazio ' '
 void tocar_som_espaco()
 {
     tocar_som_id("x", false);
 }
 
+// som quando erra tiro
 void tocar_som_tiro_errado()
 {
     tocar_som_espaco();
 }
 
+// som quando acaba onda
 void tocar_som_fim_onda()
 {
     tocar_som_id("12", true);
@@ -100,6 +106,7 @@ void tocar_som_fim_onda()
     tocar_som_id("12", true);
 }
 
+//som quando acaba partida
 void tocar_som_fim_partida()
 {
     tocar_som_id("11", true);
@@ -132,6 +139,7 @@ void sonar(estado_t *est)
     }
 }
 
+// le arquivo de 3 melhores pontuacoes
 void le_top_scores(int top[TOP_SCORES])
 {
     for (int i = 0; i < TOP_SCORES; i++) top[i] = 0;
@@ -146,6 +154,7 @@ void le_top_scores(int top[TOP_SCORES])
     fclose(f);
 }
 
+// salva em arquivo as 3 melhores pontuacoes
 void salva_top_scores(const int top[TOP_SCORES])
 {
     FILE *f = fopen(ARQUIVO_SCORES, "w");
@@ -158,6 +167,7 @@ void salva_top_scores(const int top[TOP_SCORES])
     fclose(f);
 }
 
+// atualiza as 3 melhores pontuacoes
 void atualiza_top_scores(int score)
 {
     int top[TOP_SCORES];
@@ -176,6 +186,7 @@ void atualiza_top_scores(int score)
     salva_top_scores(top);
 }
 
+// probabilidade de ser dia
 int chance_dia_por_onda(int onda)
 {
     if (onda <= 1) return 100;
@@ -185,12 +196,14 @@ int chance_dia_por_onda(int onda)
     return 20;
 }
 
+// sorteia se de dia ou de noite
 void sorteia_turno_onda(estado_t *est)
 {
     int chance_dia = chance_dia_por_onda(est->onda);
     est->ehdia = ((rand() % 100) < chance_dia);
 }
 
+// inicializa as areas de jogo de dia e noite
 void prepara_areas_onda(estado_t *est)
 {
     est->areadia[0] = ' ';
@@ -305,6 +318,7 @@ void troca_arma(estado_t *est)
     else tocar_som_arma(est->armasnoite[est->armaind]);
 }
 
+// guarda pontos dependendo da posicao do inimigo morto, chamado em atira()
 void guarda_ponto(estado_t *est, int i)
 {
     if (est->ehdia) {
@@ -390,13 +404,14 @@ void checa_escudo(estado_t *est)
     }
 }
 
+// os inimigos avancam na array "area", o ultimo elemento 
+// dela sera o proximo elemento da base dos inimigos ativos.
+// verifica se perdeu
 void avanca_area(estado_t *est, char area[], int areatam,
                  char *inimigos, int qtdinimigos)
 {
-    // area[0] e um controle de derrota; com escudo vivo, ele fica sempre vazio.
     if (est->escudos > 0) area[0] = ' ';
 
-    // Sem escudos, inimigo em area[1] ja atingiu o jogador neste tick.
     if (est->escudos == 0 && area[1] != ' ') {
         area[0] = area[1];
         est->onda_ativa = false;
@@ -422,14 +437,14 @@ void avanca_area(estado_t *est, char area[], int areatam,
     else inimigos[est->rodada] = ' ';
 }
 
-// os inimigos avancam na array "area", o ultimo elemento 
-// dela sera o proximo elemento da base dos inimigos ativos.
+// chama avanca dependendo se esta de dia ou de noite
 void avanca_inimigos(estado_t *est)
 {
     if (est->ehdia) avanca_area(est, est->areadia, areadiatam, est->inimigosdia, qtdinimigosdia);
     else avanca_area(est, est->areanoite, areanoitetam, est->inimigosnoite, qtdinimigosnoite);
 }
 
+// calcula o intervalo de cada avanco de onda
 void processar_tempo(estado_t *est)
 {
     double tempo_base_dia = 2.0;
@@ -445,6 +460,7 @@ void processar_tempo(estado_t *est)
     }
 }
 
+// gera um novo exercito de inimigos
 void sorteia_inimigos(estado_t *est)
 {
     if (est->ehdia) {
@@ -463,6 +479,7 @@ void sorteia_inimigos(estado_t *est)
     }
 }
 
+// verifica se tem algum inimigo ativo e inativo
 void acabou_onda(estado_t *est)
 {
     char *area = est->ehdia ? est->areadia : est->areanoite;
@@ -478,6 +495,7 @@ void acabou_onda(estado_t *est)
     }
 }
 
+// reseta algumas variaveis em nova onda
 void inicializa_nova_onda(estado_t *est)
 {
     est->onda++;
@@ -490,6 +508,7 @@ void inicializa_nova_onda(estado_t *est)
     prepara_areas_onda(est);
 }
 
+// atualiza pontos da struct, chamada no fim de cada onda
 void calcula_pontos(estado_t *est)
 {
     est->pontos += 2 * est->municao;
@@ -497,6 +516,7 @@ void calcula_pontos(estado_t *est)
     est->pontos += est->pontos_guardados;
 }
 
+// menu de quando passa de onda esperando o jogador apertar r
 void proxima_onda(estado_t *est)
 {
     calcula_pontos(est);
@@ -522,6 +542,7 @@ void proxima_onda(estado_t *est)
     inicializa_nova_onda(est);
 }
 
+// quando clica esc ou perde aparece menu
 void perguntar_continuar_perdeu(estado_t *est)
 {
     int top[TOP_SCORES];
@@ -544,6 +565,7 @@ void perguntar_continuar_perdeu(estado_t *est)
     }
 }
 
+// mostra na tela a onda de dia
 void apresenta(estado_t *est)
 {
     if (!est->ehdia) {
@@ -554,15 +576,15 @@ void apresenta(estado_t *est)
     const char *armas = est->ehdia ? est->armasdia : est->armasnoite;
     char *area = est->ehdia ? est->areadia : est->areanoite;
     int areatam = est->ehdia ? areadiatam : areanoitetam;
-    const char *turno = est->ehdia ? "DIA" : "NOITE";
 
-    printf("\r\033[K%s %d %d %c", turno, est->pontos, est->municao,
+    printf("\r\033[K%d %d %c", est->pontos, est->municao,
            armas[est->armaind]);
     for (int i = 1; i < areatam; i++) {
         printf("%c", area[i]);
     }
 }
 
+// loop de cada onda
 void joga_onda(estado_t *est) 
 {
     sorteia_inimigos(est);
@@ -575,6 +597,7 @@ void joga_onda(estado_t *est)
     if (est->partida_ativa) proxima_onda(est);
 }
 
+// loop da partida como um todo
 void joga_partida(estado_t *est)
 {
     while ((est->partida_ativa)) {
@@ -592,7 +615,6 @@ int main(){
     estado_t estado;
     srand(time(NULL));
     inicializa_estado(&estado);
-    //inicializa_tela();
     joga_partida(&estado);
     normaliza_terminal();
 }
