@@ -13,6 +13,9 @@
 #define qtdinimigosdia 20 
 #define qtdinimigosnoite 15 
 
+#define ARQUIVO_SCORES "scores.txt"
+#define TOP_SCORES 3
+
 // implementação de um cronômetro
 typedef struct timespec crono;
 
@@ -20,7 +23,7 @@ typedef struct
 {
     crono timer_onda;
 
-    int pontos;
+    int pontos, pontos_guardados;
     int municao;
     int escudos;
     int onda;
@@ -38,6 +41,50 @@ typedef struct
     char inimigosdia[20];
     char inimigosnoite[15];
 } estado_t;
+
+void le_top_scores(int top[TOP_SCORES])
+{
+    for (int i = 0; i < TOP_SCORES; i++) top[i] = 0;
+
+    FILE *f = fopen(ARQUIVO_SCORES, "r");
+    if (f == NULL) return;
+
+    for (int i = 0; i < TOP_SCORES; i++) {
+        if (fscanf(f, "%d", &top[i]) != 1) break;
+    }
+
+    fclose(f);
+}
+
+void salva_top_scores(const int top[TOP_SCORES])
+{
+    FILE *f = fopen(ARQUIVO_SCORES, "w");
+    if (f == NULL) return;
+
+    for (int i = 0; i < TOP_SCORES; i++) {
+        fprintf(f, "%d\n", top[i]);
+    }
+
+    fclose(f);
+}
+
+void atualiza_top_scores(int score)
+{
+    int top[TOP_SCORES];
+    le_top_scores(top);
+
+    for (int i = 0; i < TOP_SCORES; i++) {
+        if (score > top[i]) {
+            for (int j = TOP_SCORES - 1; j > i; j--) {
+                top[j] = top[j - 1];
+            }
+            top[i] = score;
+            break;
+        }
+    }
+
+    salva_top_scores(top);
+}
 
 // inicializa um cronômetro com a hora atual
 void crono_inicia(crono *c)
@@ -116,6 +163,7 @@ void inicializa_estado(estado_t *est)
     est->onda_ativa = true;
     est->partida_ativa = true;
     est->ehdia = true;
+    est->pontos_guardados = 0;
 }
 
 //troca para a proxima arma do personagem
@@ -131,6 +179,16 @@ void troca_arma(estado_t *est)
     }
 }
 
+void guarda_ponto(estado_t *est, int i)
+{
+    if (est->ehdia) {
+        est->pontos_guardados += (areadiatam - i);
+    }
+    else {
+        est->pontos_guardados += (areanoitetam - i);
+    }
+}
+
 // atira matando o primeiro inimigo de valor igual. Ou diminui 'N'
 void atira(estado_t *est)
 {
@@ -140,15 +198,21 @@ void atira(estado_t *est)
         if (inim == armaatual) {
             if (inim != 'N') {
                 est->areadia[i] = ' ';
+                est->municao--;
+                guarda_ponto(est, i);
                 return;
             }
             else {
                 est->areadia[i] = 'n';
+                est->municao--;
+                guarda_ponto(est, i);
                 return;
             }
         }
         else if (armaatual == 'N' && inim == 'n') {
             est->areadia[i] = ' ';
+            est->municao--;
+            guarda_ponto(est, i);
             return;
         }
     }
@@ -201,6 +265,10 @@ void avanca_dia(estado_t *est)
         else if (atual != ')' && prox == ' ') est->areadia[i] = prox;
     }
     if (est->escudos != 0) checa_escudo(est);
+    if (est->areadia[0] != ' ') {
+        est->onda_ativa = false;
+        est->partida_ativa = false;
+    }
     est->areadia[areadiatam - 1] = est->inimigosdia[est->rodada];
     if (est->rodada < qtdinimigosdia - 1 )est->rodada++;
     else est->inimigosdia[est->rodada] = ' ';
@@ -255,21 +323,34 @@ void acabou_onda(estado_t *est)
     }
 }
 
-inicializa_nova_onda(estado_t *est)
+void inicializa_nova_onda(estado_t *est)
 {
     est->onda++;
     est->armaind = 0;
     est->rodada = 0;
     est->municao = 30;
     est->onda_ativa = true;
+    est->pontos_guardados = 0;
+}
+
+void calcula_pontos(estado_t *est)
+{
+    if (est->ehdia) {
+        est->pontos += 2 * est->municao;
+        est->pontos += 10 * est->escudos;
+        est->pontos += est->pontos_guardados;
+    }
 }
 
 void proxima_onda(estado_t *est)
 {
+    calcula_pontos(est);
+
     char input_onda = 0;
     while (est->partida_ativa) {
-        printf("\r\033[KPontos: %d, Escudos: %d. "  
-            "Pressione 'r' para a proxima onda", est->pontos, est->escudos);
+        printf("\r\033[KPontos: %d, Escudos: %d, Onda: %d. "  
+               "Pressione 'r' para a proxima onda", 
+               est->pontos, est->escudos, est->onda + 1);
         input_onda = lechar();
         if (input_onda == 27) {
             est->partida_ativa = false;
@@ -281,6 +362,28 @@ void proxima_onda(estado_t *est)
     if (!est->partida_ativa) return;
 
     inicializa_nova_onda(est);
+}
+
+void perguntar_continuar_perdeu(estado_t *est)
+{
+    int top[TOP_SCORES];
+    atualiza_top_scores(est->pontos);
+    le_top_scores(top);
+
+    char input_fim = 0;
+    while (!est->partida_ativa) {
+        printf("\r\033[KPontos: %d, Ondas: %d. Top 3: %d | %d | %d. Voce morreu, "
+            "pressione 'r' jogar novamente", est->pontos, est->onda,
+            top[0], top[1], top[2]);
+        input_fim = lechar();
+        if (input_fim == 27) {
+            return;
+        }
+        if (input_fim == 'r') {
+            est->partida_ativa = true;
+            inicializa_estado(est);
+        }
+    }
 }
 
 void apresenta(estado_t *est)
@@ -310,11 +413,9 @@ void joga_partida(estado_t *est)
         crono_inicia(&est->timer_onda);
         est->onda_ativa = 1;
         joga_onda(est);
-        /*if (!est->partida_ativa) {
-            if (!pergunta_continuar()) {
-                est->partida_ativa = 1;
-            }
-        }*/
+        if (!est->partida_ativa) {
+            (perguntar_continuar_perdeu(est));
+        }
     }
 }
 
