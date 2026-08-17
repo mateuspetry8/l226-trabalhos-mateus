@@ -86,6 +86,38 @@ void atualiza_top_scores(int score)
     salva_top_scores(top);
 }
 
+int chance_dia_por_onda(int onda)
+{
+    if (onda <= 1) return 100;
+    if (onda == 2) return 80;
+    if (onda == 3) return 60;
+    if (onda == 4) return 40;
+    return 20;
+}
+
+void sorteia_turno_onda(estado_t *est)
+{
+    int chance_dia = chance_dia_por_onda(est->onda);
+    est->ehdia = ((rand() % 100) < chance_dia);
+}
+
+void prepara_areas_onda(estado_t *est)
+{
+    est->areadia[0] = ' ';
+    est->areanoite[0] = ' ';
+
+    for (int i = 1; i < 4; i++) {
+        char bloco = (i <= est->escudos) ? ')' : ' ';
+        est->areadia[i] = bloco;
+        est->areanoite[i] = bloco;
+    }
+
+    for (int i = 4; i < areadiatam; i++) {
+        est->areadia[i] = ' ';
+        if (i < areanoitetam) est->areanoite[i] = ' ';
+    }
+}
+
 // inicializa um cronômetro com a hora atual
 void crono_inicia(crono *c)
 {
@@ -151,7 +183,6 @@ void inicializa_base(estado_t *est)
 // atribui valores iniciais as variaveis da struct de controle
 void inicializa_estado(estado_t *est)
 {
-    inicializa_base(est);
     est->armasdia = "0123456789N";
     est->armasnoite = "02468N";
     est->armaind = 0;
@@ -164,6 +195,8 @@ void inicializa_estado(estado_t *est)
     est->partida_ativa = true;
     est->ehdia = true;
     est->pontos_guardados = 0;
+    inicializa_base(est);
+    sorteia_turno_onda(est);
 }
 
 //troca para a proxima arma do personagem
@@ -192,25 +225,29 @@ void guarda_ponto(estado_t *est, int i)
 // atira matando o primeiro inimigo de valor igual. Ou diminui 'N'
 void atira(estado_t *est)
 {
-    for (int i = 1; i < areadiatam; i++) {
-        char inim = est->areadia[i];
-        char armaatual = est->armasdia[est->armaind];
+    char *area = est->ehdia ? est->areadia : est->areanoite;
+    int areatam = est->ehdia ? areadiatam : areanoitetam;
+    const char *armas = est->ehdia ? est->armasdia : est->armasnoite;
+
+    for (int i = 1; i < areatam; i++) {
+        char inim = area[i];
+        char armaatual = armas[est->armaind];
         if (inim == armaatual) {
             if (inim != 'N') {
-                est->areadia[i] = ' ';
+                area[i] = ' ';
                 est->municao--;
                 guarda_ponto(est, i);
                 return;
             }
             else {
-                est->areadia[i] = 'n';
+                area[i] = 'n';
                 est->municao--;
                 guarda_ponto(est, i);
                 return;
             }
         }
         else if (armaatual == 'N' && inim == 'n') {
-            est->areadia[i] = ' ';
+            area[i] = ' ';
             est->municao--;
             guarda_ponto(est, i);
             return;
@@ -247,36 +284,46 @@ void processar_teclado(estado_t *est)
 void checa_escudo(estado_t *est)
 {
     int i = est->escudos;
-    if (est->areadia[i] != ')') {
-        est->areadia[i] = ' ';
+    char *area = est->ehdia ? est->areadia : est->areanoite;
+
+    if (area[i] != ')') {
+        area[i] = ' ';
         est->escudos--;
     }
+}
+
+void avanca_area(estado_t *est, char *area, int areatam,
+                 char *inimigos, int qtdinimigos)
+{
+    char atual, prox;
+    for (int i = 1; i < areatam - 1; i++) {
+        atual = area[i];
+        prox = area[i + 1];
+        if (atual != ')' && prox != ' ') area[i] = prox;
+        else if (atual == ')' && prox != ' ') area[i] = prox;
+        else if (atual != ')' && prox == ' ') area[i] = prox;
+    }
+
+    if (est->escudos != 0) checa_escudo(est);
+    if (area[0] != ' ') {
+        est->onda_ativa = false;
+        est->partida_ativa = false;
+    }
+
+    area[areatam - 1] = inimigos[est->rodada];
+    if (est->rodada < qtdinimigos - 1) est->rodada++;
+    else inimigos[est->rodada] = ' ';
 }
 
 // os inimigos avancam na array "area", o ultimo elemento dela sera o proximo elemento da base dos inimigos ativos.
 void avanca_dia(estado_t *est)
 {
-    char atual, prox;
-    for(int i = 1; i < areadiatam - 1; i++) {
-        atual = est->areadia[i];
-        prox = est->areadia[i + 1];
-        if(atual != ')' && prox != ' ') est->areadia[i] = prox;
-        else if (atual == ')' && prox != ' ') est->areadia[i] = prox;
-        else if (atual != ')' && prox == ' ') est->areadia[i] = prox;
-    }
-    if (est->escudos != 0) checa_escudo(est);
-    if (est->areadia[0] != ' ') {
-        est->onda_ativa = false;
-        est->partida_ativa = false;
-    }
-    est->areadia[areadiatam - 1] = est->inimigosdia[est->rodada];
-    if (est->rodada < qtdinimigosdia - 1 )est->rodada++;
-    else est->inimigosdia[est->rodada] = ' ';
+    avanca_area(est, est->areadia, areadiatam, est->inimigosdia, qtdinimigosdia);
 }
 
 void avanca_noite(estado_t *est)
 {
-    
+    avanca_area(est, est->areanoite, areanoitetam, est->inimigosnoite, qtdinimigosnoite);
 }
 
 // os inimigos avancam na array "area", o ultimo elemento 
@@ -298,16 +345,16 @@ void processar_tempo(estado_t *est)
 void sorteia_inimigos(estado_t *est)
 {
     if (est->ehdia) {
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < qtdinimigosdia; i++) {
             int randini;
-            randini = rand() % 11;
+            randini = rand() % qtdataquesdia;
             est->inimigosdia[i] = est->armasdia[randini];
         }
     }
     else {
-        for (int i = 0; i < 15; i++) {
+        for (int i = 0; i < qtdinimigosnoite; i++) {
             int randini;
-            randini = rand() % 6;
+            randini = rand() % qtdataquesnoite;
             est->inimigosnoite[i] = est->armasnoite[randini];
         }
     }
@@ -315,9 +362,13 @@ void sorteia_inimigos(estado_t *est)
 
 void acabou_onda(estado_t *est)
 {
-    if (est->rodada >= 19) {
-        for(int i = 1; i < areadiatam; i++) {
-            if (est->areadia[i] != ' ' && est->areadia[i] != ')') return;
+    char *area = est->ehdia ? est->areadia : est->areanoite;
+    int areatam = est->ehdia ? areadiatam : areanoitetam;
+    int qtdinimigos = est->ehdia ? qtdinimigosdia : qtdinimigosnoite;
+
+    if (est->rodada >= (qtdinimigos - 1)) {
+        for (int i = 1; i < areatam; i++) {
+            if (area[i] != ' ' && area[i] != ')') return;
         }
         est->onda_ativa = false;
     }
@@ -326,31 +377,34 @@ void acabou_onda(estado_t *est)
 void inicializa_nova_onda(estado_t *est)
 {
     est->onda++;
+    sorteia_turno_onda(est);
     est->armaind = 0;
     est->rodada = 0;
     est->municao = 30;
     est->onda_ativa = true;
     est->pontos_guardados = 0;
+    prepara_areas_onda(est);
 }
 
 void calcula_pontos(estado_t *est)
 {
-    if (est->ehdia) {
-        est->pontos += 2 * est->municao;
-        est->pontos += 10 * est->escudos;
-        est->pontos += est->pontos_guardados;
-    }
+    est->pontos += 2 * est->municao;
+    est->pontos += 10 * est->escudos;
+    est->pontos += est->pontos_guardados;
 }
 
 void proxima_onda(estado_t *est)
 {
     calcula_pontos(est);
 
+    int onda_seguinte = est->onda + 1;
+    int chance_dia = chance_dia_por_onda(onda_seguinte);
+
     char input_onda = 0;
     while (est->partida_ativa) {
-        printf("\r\033[KPontos: %d, Escudos: %d, Onda: %d. "  
-               "Pressione 'r' para a proxima onda", 
-               est->pontos, est->escudos, est->onda + 1);
+        printf("\r\033[KPontos: %d, Escudos: %d, Onda: %d. "
+               "Chance de dia: %d%%. Pressione 'r' para a proxima onda",
+               est->pontos, est->escudos, onda_seguinte, chance_dia);
         input_onda = lechar();
         if (input_onda == 27) {
             est->partida_ativa = false;
@@ -388,10 +442,15 @@ void perguntar_continuar_perdeu(estado_t *est)
 
 void apresenta(estado_t *est)
 {
-    printf("\r\033[K%d %d %c", est->pontos, est->municao, 
-                                est->armasdia[est->armaind]);
-    for (int i = 1; i < areadiatam; i++) {
-        printf("%c", est->areadia[i]);
+    const char *armas = est->ehdia ? est->armasdia : est->armasnoite;
+    char *area = est->ehdia ? est->areadia : est->areanoite;
+    int areatam = est->ehdia ? areadiatam : areanoitetam;
+    const char *turno = est->ehdia ? "DIA" : "NOITE";
+
+    printf("\r\033[K%s %d %d %c", turno, est->pontos, est->municao,
+           armas[est->armaind]);
+    for (int i = 1; i < areatam; i++) {
+        printf("%c", area[i]);
     }
 }
 
