@@ -42,6 +42,96 @@ typedef struct
     char inimigosnoite[15];
 } estado_t;
 
+// toca um arquivo de som da pasta Sons, no formato <id>.3.wav
+void tocar_som_id(const char *id, bool esperar)
+{
+    char comando[128];
+    const char *fim = esperar ? "" : " &";
+
+    snprintf(comando, sizeof(comando),
+             "aplay -q Sons/%s.3.wav >/dev/null 2>&1%s",
+             id, fim);
+    system(comando);
+}
+
+// mapeia um tipo de ataque para o id do arquivo de som correspondente
+const char *id_som_ataque(char ataque)
+{
+    static char id[2];
+
+    if (ataque >= '0' && ataque <= '9') {
+        id[0] = ataque;
+        id[1] = '\0';
+        return id;
+    }
+    if (ataque == 'N' || ataque == 'n') return "11";
+    return "x";
+}
+
+void tocar_som_ataque(char ataque)
+{
+    tocar_som_id(id_som_ataque(ataque), false);
+}
+
+void tocar_som_arma(char arma)
+{
+    tocar_som_ataque(arma);
+}
+
+void tocar_som_escudo()
+{
+    tocar_som_id("12", false);
+}
+
+void tocar_som_espaco()
+{
+    tocar_som_id("x", false);
+}
+
+void tocar_som_tiro_errado()
+{
+    tocar_som_espaco();
+}
+
+void tocar_som_fim_onda()
+{
+    tocar_som_id("12", false);
+    tocar_som_id("x", false);
+    tocar_som_id("12", false);
+}
+
+void tocar_som_fim_partida()
+{
+    tocar_som_id("11", false);
+    tocar_som_id("12", false);
+    tocar_som_id("11", false);
+}
+
+// toca o som da posicao informada (escudo, vazio ou ataque)
+void tocar_som_posicao(char c)
+{
+    if (c == ')') {
+        tocar_som_id("12", true);
+        return;
+    }
+    if (c == ' ') {
+        tocar_som_id("x", true);
+        return;
+    }
+    tocar_som_id(id_som_ataque(c), true);
+}
+
+// sonar: toca os sons das posicoes, na ordem em que aparecem na area
+void sonar(estado_t *est)
+{
+    char *area = est->ehdia ? est->areadia : est->areanoite;
+    int areatam = est->ehdia ? areadiatam : areanoitetam;
+
+    for (int i = 1; i < areatam; i++) {
+        tocar_som_posicao(area[i]);
+    }
+}
+
 void le_top_scores(int top[TOP_SCORES])
 {
     for (int i = 0; i < TOP_SCORES; i++) top[i] = 0;
@@ -210,6 +300,9 @@ void troca_arma(estado_t *est)
         if (est->armaind < qtdataquesnoite - 1) est->armaind++;
         else est->armaind = 0;
     }
+
+    if (est->ehdia) tocar_som_arma(est->armasdia[est->armaind]);
+    else tocar_som_arma(est->armasnoite[est->armaind]);
 }
 
 void guarda_ponto(estado_t *est, int i)
@@ -228,21 +321,23 @@ void atira(estado_t *est)
     char *area = est->ehdia ? est->areadia : est->areanoite;
     int areatam = est->ehdia ? areadiatam : areanoitetam;
     const char *armas = est->ehdia ? est->armasdia : est->armasnoite;
+    char armaatual = armas[est->armaind];
 
     for (int i = 1; i < areatam; i++) {
         char inim = area[i];
-        char armaatual = armas[est->armaind];
         if (inim == armaatual) {
             if (inim != 'N') {
                 area[i] = ' ';
                 est->municao--;
                 guarda_ponto(est, i);
+                tocar_som_arma(armaatual);
                 return;
             }
             else {
                 area[i] = 'n';
                 est->municao--;
                 guarda_ponto(est, i);
+                tocar_som_arma(armaatual);
                 return;
             }
         }
@@ -250,10 +345,12 @@ void atira(estado_t *est)
             area[i] = ' ';
             est->municao--;
             guarda_ponto(est, i);
+            tocar_som_arma(armaatual);
             return;
         }
     }
     est->municao--;
+    tocar_som_tiro_errado();
 }
 
 // escolhe alguma acao do jogo dependendo do input do teclado 
@@ -273,7 +370,7 @@ void processar_teclado(estado_t *est)
         atira(est);
         break;
     case 32:
-        //if (!est->ehdia) sonar();
+        sonar(est);
         break;
     default:
         break;
@@ -289,12 +386,25 @@ void checa_escudo(estado_t *est)
     if (area[i] != ')') {
         area[i] = ' ';
         est->escudos--;
+        tocar_som_escudo();
     }
 }
 
-void avanca_area(estado_t *est, char *area, int areatam,
+void avanca_area(estado_t *est, char area[], int areatam,
                  char *inimigos, int qtdinimigos)
 {
+    // area[0] e um controle de derrota; com escudo vivo, ele fica sempre vazio.
+    if (est->escudos > 0) area[0] = ' ';
+
+    // Sem escudos, inimigo em area[1] ja atingiu o jogador neste tick.
+    if (est->escudos == 0 && area[1] != ' ') {
+        area[0] = area[1];
+        est->onda_ativa = false;
+        est->partida_ativa = false;
+        tocar_som_fim_partida();
+        return;
+    }
+
     char atual, prox;
     for (int i = 1; i < areatam - 1; i++) {
         atual = area[i];
@@ -305,38 +415,31 @@ void avanca_area(estado_t *est, char *area, int areatam,
     }
 
     if (est->escudos != 0) checa_escudo(est);
-    if (area[0] != ' ') {
-        est->onda_ativa = false;
-        est->partida_ativa = false;
-    }
 
     area[areatam - 1] = inimigos[est->rodada];
+    if (area[areatam - 1] != ' ') tocar_som_ataque(area[areatam - 1]);
     if (est->rodada < qtdinimigos - 1) est->rodada++;
     else inimigos[est->rodada] = ' ';
-}
-
-// os inimigos avancam na array "area", o ultimo elemento dela sera o proximo elemento da base dos inimigos ativos.
-void avanca_dia(estado_t *est)
-{
-    avanca_area(est, est->areadia, areadiatam, est->inimigosdia, qtdinimigosdia);
-}
-
-void avanca_noite(estado_t *est)
-{
-    avanca_area(est, est->areanoite, areanoitetam, est->inimigosnoite, qtdinimigosnoite);
 }
 
 // os inimigos avancam na array "area", o ultimo elemento 
 // dela sera o proximo elemento da base dos inimigos ativos.
 void avanca_inimigos(estado_t *est)
 {
-    if (est->ehdia) avanca_dia(est);
-    else avanca_noite(est);
+    if (est->ehdia) avanca_area(est, est->areadia, areadiatam, est->inimigosdia, qtdinimigosdia);
+    else avanca_area(est, est->areanoite, areanoitetam, est->inimigosnoite, qtdinimigosnoite);
 }
 
 void processar_tempo(estado_t *est)
 {
-    if (crono_parcial(&est->timer_onda) >= 1.5) {
+    double tempo_base_dia = 2.0;
+    for (int i = 1; i < est->onda; i++) {
+        tempo_base_dia *= 0.9;
+    }
+
+    double intervalo_mov = est->ehdia ? tempo_base_dia : (tempo_base_dia * 3.0);
+
+    if (crono_parcial(&est->timer_onda) >= intervalo_mov) {
         avanca_inimigos(est);
         crono_inicia(&est->timer_onda);
     }
@@ -371,6 +474,7 @@ void acabou_onda(estado_t *est)
             if (area[i] != ' ' && area[i] != ')') return;
         }
         est->onda_ativa = false;
+        tocar_som_fim_onda();
     }
 }
 
