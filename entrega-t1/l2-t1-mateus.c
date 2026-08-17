@@ -95,16 +95,16 @@ void tocar_som_tiro_errado()
 
 void tocar_som_fim_onda()
 {
-    tocar_som_id("12", false);
-    tocar_som_id("x", false);
-    tocar_som_id("12", false);
+    tocar_som_id("12", true);
+    tocar_som_id("x", true);
+    tocar_som_id("12", true);
 }
 
 void tocar_som_fim_partida()
 {
-    tocar_som_id("11", false);
-    tocar_som_id("12", false);
-    tocar_som_id("11", false);
+    tocar_som_id("11", true);
+    tocar_som_id("12", true);
+    tocar_som_id("11", true);
 }
 
 // toca o som da posicao informada (escudo, vazio ou ataque)
@@ -546,6 +546,11 @@ void perguntar_continuar_perdeu(estado_t *est)
 
 void apresenta(estado_t *est)
 {
+    if (!est->ehdia) {
+        printf("\r\033[K%d", est->pontos);
+        return;
+    }
+
     const char *armas = est->ehdia ? est->armasdia : est->armasnoite;
     char *area = est->ehdia ? est->areadia : est->areanoite;
     int areatam = est->ehdia ? areadiatam : areanoitetam;
