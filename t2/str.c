@@ -52,6 +52,30 @@ static void s_redimensiona(Str s, int novos_nbytes)
   s->nbytes = novos_nbytes;
 }
 
+unichar s_char_na_pos(int pos, Str_c s)
+{
+  if (pos < 0) {
+    pos = s_tam(s) + 1 + pos;
+  }
+
+  if (pos < 0 || pos >= s_tam(s)) {
+    return UNI_INV;
+  }
+
+  byte *ptr = u8_avanca_unichar(s->bytes, pos);
+  if (ptr == NULL) {
+    return UNI_INV;
+  }
+
+  unichar c;
+  if (u8_unichar_nos_bytes(4, ptr, &c) < 0) {
+    return UNI_INV;
+  }
+
+  return c;
+
+}
+
 // verifica se a string cad está de acordo com a especificação
 // aborta o programa se não tiver
 static void s_ok(Str_c s)
@@ -71,8 +95,6 @@ static void s_ok(Str_c s)
   assert(s->cap <= 3 * s->nbytes || s->cap == MIN_ALLOC);
   assert(u8_conta_unichar_nos_bytes(s->nbytes, s->bytes) >= 0);
 }
-
-//...
 
 // operações de criação e destruição {{{1
 
@@ -107,20 +129,20 @@ Str s_cria(char const *strC)
 void s_destroi(Str s)
 {
   s_ok(s);
-  //...
+  free(s->bytes);
   free(s);
 }
 
 Str s_cria_substring(Str_c s, int pos, int tam)
 {
-   Str nova = s_cria("");
-   s_substring(nova, s, pos, tam);
-   return nova;
+  Str nova = s_cria("");
+  s_substring(nova, s, pos, tam);
+  return nova;
 }
 
 Str s_cria_cópia(Str_c s)
 {
-   return s_cria_substring(s, 0, -1);
+  return s_cria_substring(s, 0, -1);
 }
 
 // Retorna uma nova string com o conteúdo do arquivo chamado nome.
@@ -137,8 +159,7 @@ Str s_cria_de_arquivo(char *nome)
 int s_tam(Str_c s)
 {
   s_ok(s);
-  //...
-  return 0;
+  return u8_conta_unichar_nos_bytes(s->nbytes, s->bytes);
 }
 
 char *s_strc(Str_c s)
