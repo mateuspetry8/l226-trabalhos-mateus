@@ -14,6 +14,18 @@ struct str {
   byte *bytes; // sequência UTF-8; vazia => NULL
 };
 
+// A memória para conter os bytes de uma string deve ser alocada e/ou
+//   realocada conforme a necessidade, cuidando para que a quantidade
+//   de memória alocada seja sempre:
+//   - nula (não alocada) se a string for vazia, ou
+//   - não inferior ao necessário para armazenar os bytes da codificação utf8;
+//   - não inferior à alocação mínima;
+//   - não superior ao triplo do número de bytes necessários
+//     (exceto quando for o mínimo);
+//   - uma potência de 2.
+
+// funções auxiliares {{{1
+
 static void s_redimensiona(Str s, int novos_nbytes)
 {
   assert(s != NULL);
@@ -39,18 +51,6 @@ static void s_redimensiona(Str s, int novos_nbytes)
   s->cap = cap;
   s->nbytes = novos_nbytes;
 }
-
-// A memória para conter os bytes de uma string deve ser alocada e/ou
-//   realocada conforme a necessidade, cuidando para que a quantidade
-//   de memória alocada seja sempre:
-//   - nula (não alocada) se a string for vazia, ou
-//   - não inferior ao necessário para armazenar os bytes da codificação utf8;
-//   - não inferior à alocação mínima;
-//   - não superior ao triplo do número de bytes necessários
-//     (exceto quando for o mínimo);
-//   - uma potência de 2.
-
-// funções auxiliares {{{1
 
 // verifica se a string cad está de acordo com a especificação
 // aborta o programa se não tiver
@@ -80,7 +80,27 @@ Str s_cria(char const *strC)
 {
   Str s = malloc(sizeof(*s));
   assert(s != NULL);
-  //...
+  
+  if (strC == NULL || *strC == '\0') {
+    s->nbytes = 0;
+    s->bytes = NULL;
+    s->cap = 0;
+    return s;
+  }
+  
+  int nbytes = (int)strlen(strC);
+  
+  if (u8_conta_unichar_nos_bytes(nbytes, (byte *)strC) < 0) {
+    s->nbytes = 0;
+    s->bytes = NULL;
+    s->cap = 0;
+    return s;
+  }
+  
+  s_redimensiona(s, nbytes);
+  memcpy(s->bytes, strC, (size_t)nbytes);
+  
+  s_ok(s);
   return s;
 }
 
