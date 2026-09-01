@@ -14,6 +14,32 @@ struct str {
   byte *bytes; // sequência UTF-8; vazia => NULL
 };
 
+static void s_redimensiona(Str s, int novos_nbytes)
+{
+  assert(s != NULL);
+
+  if (novos_nbytes == 0) {
+    free(s->bytes);
+    s->bytes = NULL;
+    s->nbytes = 0;
+    s->cap = 0;
+    return;
+  }
+
+  int cap = MIN_ALLOC;
+  while (cap < novos_nbytes)
+    cap *= 2;
+
+  while (cap > MIN_ALLOC && cap > 3 * novos_nbytes)
+    cap /= 2;
+
+  s->bytes = realloc(s->bytes, (size_t) cap);
+  assert(s->bytes != NULL);
+
+  s->cap = cap;
+  s->nbytes = novos_nbytes;
+}
+
 // A memória para conter os bytes de uma string deve ser alocada e/ou
 //   realocada conforme a necessidade, cuidando para que a quantidade
 //   de memória alocada seja sempre:
