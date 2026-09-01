@@ -9,7 +9,9 @@
 #define MIN_ALLOC 8    // alocação mínima
 
 struct str {
-  // ...
+  int nbytes;  // número de bytes válidos da codificação UTF-8
+  int cap;     // capacidade alocada em bytes (potência de 2)
+  byte *bytes; // sequência UTF-8; vazia => NULL
 };
 
 // A memória para conter os bytes de uma string deve ser alocada e/ou
@@ -28,6 +30,20 @@ struct str {
 // aborta o programa se não tiver
 static void s_ok(Str_c s)
 {
+  assert(s != NULL);
+
+  if (s->bytes == NULL) {
+    assert(s->nbytes == 0);
+    assert(s->cap == 0);
+    return;
+  }
+
+  assert(s->nbytes > 0);
+  assert(s->cap >= MIN_ALLOC);
+  assert(s->cap >= s->nbytes);
+  assert((s->cap & (s->cap - 1)) == 0);
+  assert(s->cap <= 3 * s->nbytes || s->cap == MIN_ALLOC);
+  assert(u8_conta_unichar_nos_bytes(s->nbytes, s->bytes) >= 0);
 }
 
 //...
