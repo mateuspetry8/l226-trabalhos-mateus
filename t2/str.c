@@ -52,7 +52,7 @@ static void s_redimensiona(Str s, int novos_nbytes)
   s->nbytes = novos_nbytes;
 }
 
-unichar s_char_na_pos(int pos, Str_c s)
+unichar s_char_na_pos(Str_c s, int pos)
 {
   if (pos < 0) {
     pos = s_tam(s) + 1 + pos;
@@ -150,7 +150,59 @@ Str s_cria_cópia(Str_c s)
 Str s_cria_de_arquivo(char *nome)
 {
   Str s = s_cria("");
-  //...
+
+  if (nome == NULL) {
+    return s;
+  }
+
+  FILE *f = fopen(nome, "rb");
+  if (f == NULL) {
+    return s;
+  }
+
+  if (fseek(f, 0, SEEK_END) != 0) {
+    fclose(f);
+    return s;
+  }
+
+  long nbytes_l = ftell(f);
+  if (nbytes_l < 0) {
+    fclose(f);
+    return s;
+  }
+
+  rewind(f);
+
+  int nbytes = (int) nbytes_l;
+  if (nbytes == 0) {
+    fclose(f);
+    return s;
+  }
+
+  byte *buf = malloc((size_t) nbytes);
+  if (buf == NULL) {
+    fclose(f);
+    return s;
+  }
+
+  size_t lidos = fread(buf, 1, (size_t) nbytes, f);
+  fclose(f);
+
+  if (lidos != (size_t) nbytes) {
+    free(buf);
+    return s;
+  }
+
+  if (u8_conta_unichar_nos_bytes(nbytes, buf) < 0) {
+    free(buf);
+    return s;
+  }
+
+  s_redimensiona(s, nbytes);
+  memcpy(s->bytes, buf, (size_t) nbytes);
+  free(buf);
+
+  s_ok(s);
   return s;
 }
 
@@ -165,15 +217,21 @@ int s_tam(Str_c s)
 char *s_strc(Str_c s)
 {
   s_ok(s);
-  //...
-  return NULL;
+  char *strC = malloc((size_t) s->nbytes + 1);
+  if (strC == NULL) {
+    return NULL;
+  }
+  memcpy(strC, s->bytes, (size_t) s->nbytes);
+  strC[s->nbytes] = '\0';
+  return strC;
 }
 
 unichar s_ch(Str_c s, int pos)
 {
   s_ok(s);
-  //...
-  return UNI_INV;
+  unichar a = s_char_na_pos(s, pos);
+  if(a != UNI_INV) return a;
+  else return UNI_INV;
 }
 
 
