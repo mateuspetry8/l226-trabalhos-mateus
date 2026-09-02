@@ -411,7 +411,48 @@ void s_substring(Str s, Str_c sb, int pos, int tam)
 {
   s_ok(s);
   s_ok(sb);
-  //...
+
+  int n = s_tam(sb);
+  int ini = pos_absoluta(sb, pos);
+  if (ini < 0) {
+    ini = 0;
+  } else if (ini > n) {
+    ini = n;
+  }
+
+  int fim;
+  if (tam < 0) {
+    fim = n;
+  } 
+  else {
+    fim = ini + tam;
+    if (fim < ini) {
+      fim = ini;
+    }
+    if (fim > n) {
+      fim = n;
+    }
+  }
+
+  int ini_bytes = 0;
+  int fim_bytes = sb->nbytes;
+
+  if (ini > 0) {
+    ini_bytes = (int) (u8_avanca_unichar(sb->bytes, ini) - sb->bytes);
+  }
+  if (fim < n) {
+    fim_bytes = (int) (u8_avanca_unichar(sb->bytes, fim) - sb->bytes);
+  }
+
+  int novo_nbytes = fim_bytes - ini_bytes;
+
+  s_redimensiona(s, novo_nbytes);
+
+  if (novo_nbytes > 0) {
+    memcpy(s->bytes, sb->bytes + ini_bytes, (size_t) novo_nbytes);
+  }
+
+  s_ok(s);
 }
 
 void s_copia(Str s, Str_c sb)
@@ -427,7 +468,14 @@ void s_insere(Str s, int pos, Str_c sb)
 void s_insere_c(Str s, int pos, unichar c)
 {
   s_ok(s);
-  //...
+  byte buf[4];
+  int nbytes = u8_converte_pra_utf8(c, buf);
+  if (nbytes < 0) { 
+    return; 
+  }
+  Str tmp = s_cria((char *)buf);
+  s_insere(s, pos, tmp);
+  s_destroi(tmp);
 }
 
 void s_anexa(Str s, Str_c sb)
