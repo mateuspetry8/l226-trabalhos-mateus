@@ -236,15 +236,22 @@ bool s_igual(Str_c s, Str_c sb)
 {
   s_ok(s);
   s_ok(sb);
-  //...
-  return false;
+  if(s->nbytes != sb->nbytes) return false;
+  return memcmp(s->bytes, sb->bytes, (size_t) s->nbytes) == 0;
 }
 
 int s_busca_c(Str_c s, int pos, Str_c sb)
 {
   s_ok(s);
   s_ok(sb);
-  //...
+  for(int i = pos_absoluta(s, pos); i < s_tam(s); i++) {
+    unichar c = s_ch(s, i);
+    for(int j = 0; j < s_tam(sb); j++) {
+      if(c == s_ch(sb, j)) {
+        return i;
+      }
+    }
+  }
   return -1;
 }
 
@@ -252,7 +259,19 @@ int s_busca_nc(Str_c s, int pos, Str_c sb)
 {
   s_ok(s);
   s_ok(sb);
-  //...
+  for(int i = pos_absoluta(s, pos); i < s_tam(s); i++) {
+    unichar c = s_ch(s, i);
+    bool achou = false;
+    for(int j = 0; j < s_tam(sb); j++) {
+      if(c == s_ch(sb, j)) {
+        achou = true;
+        break;
+      }
+    }
+    if(!achou) {
+      return i;
+    }
+  }
   return -1;
 }
 
@@ -260,7 +279,14 @@ int s_busca_rc(Str_c s, int pos, Str_c sb)
 {
   s_ok(s);
   s_ok(sb);
-  //...
+  for(int i = pos_absoluta(s, pos); i >= 0; i--) {
+    unichar c = s_ch(s, i);
+    for(int j = 0; j < s_tam(sb); j++) {
+      if(c == s_ch(sb, j)) {
+        return i;
+      }
+    }
+  }
   return -1;
 }
 
@@ -268,7 +294,19 @@ int s_busca_rnc(Str_c s, int pos, Str_c sb)
 {
   s_ok(s);
   s_ok(sb);
-  //...
+  for(int i = pos_absoluta(s, pos); i >= 0; i--) {
+    unichar c = s_ch(s, i);
+    bool achou = false;
+    for(int j = 0; j < s_tam(sb); j++) {
+      if(c == s_ch(sb, j)) {
+        achou = true;
+        break;
+      }
+    }
+    if(!achou) {
+      return i;
+    }
+  }
   return -1;
 }
 
@@ -276,7 +314,21 @@ int s_busca_s(Str_c s, int pos, Str_c buscada)
 {
   s_ok(s);
   s_ok(buscada);
-  //...
+  if(s_tam(buscada) == 0) {
+    return pos_absoluta(s, pos);
+  }
+  for(int i = pos_absoluta(s, pos); i <= s_tam(s) - s_tam(buscada); i++) {
+    bool achou = true;
+    for(int j = 0; j < s_tam(buscada); j++) {
+      if(s_ch(s, i + j) != s_ch(buscada, j)) {
+        achou = false;
+        break;
+      }
+    }
+    if(achou) {
+      return i;
+    }
+  }
   return -1;
 }
 
@@ -305,7 +357,8 @@ void s_substitui(Str s, int pos, int tam, Str_c sb)
   int fim;
   if (tam < 0) {
     fim = n;
-  } else {
+  } 
+  else {
     fim = ini + tam;
     if (fim < ini) {
       fim = ini;
