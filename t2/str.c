@@ -52,28 +52,12 @@ static void s_redimensiona(Str s, int novos_nbytes)
   s->nbytes = novos_nbytes;
 }
 
-unichar s_char_na_pos(Str_c s, int pos)
+static int pos_absoluta(Str_c s, int pos)
 {
   if (pos < 0) {
-    pos = s_tam(s) + 1 + pos;
+    return s_tam(s) + 1 + pos;
   }
-
-  if (pos < 0 || pos >= s_tam(s)) {
-    return UNI_INV;
-  }
-
-  byte *ptr = u8_avanca_unichar(s->bytes, pos);
-  if (ptr == NULL) {
-    return UNI_INV;
-  }
-
-  unichar c;
-  if (u8_unichar_nos_bytes(4, ptr, &c) < 0) {
-    return UNI_INV;
-  }
-
-  return c;
-
+  return pos;
 }
 
 // verifica se a string cad está de acordo com a especificação
@@ -229,9 +213,20 @@ char *s_strc(Str_c s)
 unichar s_ch(Str_c s, int pos)
 {
   s_ok(s);
-  unichar a = s_char_na_pos(s, pos);
-  if(a != UNI_INV) return a;
-  else return UNI_INV;
+
+  int pos_abs = pos_absoluta(s, pos);
+
+  if (pos_abs < 0 || pos_abs >= s_tam(s)) {
+    return UNI_INV;
+  }
+
+  byte *ptr = u8_avanca_unichar(s->bytes, pos_abs);
+  if (ptr == NULL) return UNI_INV;
+
+  unichar c;
+  if (u8_unichar_nos_bytes(4, ptr, &c) < 0) return UNI_INV;
+
+  return c;
 }
 
 
@@ -291,8 +286,72 @@ int s_busca_s(Str_c s, int pos, Str_c buscada)
 void s_substitui(Str s, int pos, int tam, Str_c sb)
 {
   s_ok(s);
+
+  Str tmp = NULL;
+  if (sb == NULL) {
+    tmp = s_cria("");
+    sb = tmp;
+  }
   s_ok(sb);
-  //...
+
+  int n = s_tam(s);
+  int ini = pos_absoluta(s, pos);
+  if (ini < 0) {
+    ini = 0;
+  } else if (ini > n) {
+    ini = n;
+  }
+
+  int fim;
+  if (tam < 0) {
+    fim = n;
+  } else {
+    fim = ini + tam;
+    if (fim < ini) {
+      fim = ini;
+    }
+    if (fim > n) {
+      fim = n;
+    }
+  }
+
+  int ini_bytes = 0;
+  int fim_bytes = s->nbytes;
+
+  if (ini > 0) {
+    ini_bytes = (int) (u8_avanca_unichar(s->bytes, ini) - s->bytes);
+  }
+  if (fim < n) {
+    fim_bytes = (int) (u8_avanca_unichar(s->bytes, fim) - s->bytes);
+  }
+
+  int prefixo = ini_bytes;
+  int sufixo = s->nbytes - fim_bytes;
+  int troca = sb->nbytes;
+  int novo_nbytes = prefixo + troca + sufixo;
+
+  byte *res = NULL;
+  if (novo_nbytes > 0) {
+    res = malloc((size_t) novo_nbytes);
+    assert(res != NULL);
+
+    memcpy(res, s->bytes, (size_t) prefixo);
+    memcpy(res + prefixo, sb->bytes, (size_t) troca);
+    memcpy(res + prefixo + troca, s->bytes + fim_bytes, (size_t) sufixo);
+  }
+
+  s_redimensiona(s, novo_nbytes);
+
+  if (novo_nbytes > 0) {
+    memcpy(s->bytes, res, (size_t) novo_nbytes);
+    free(res);
+  }
+
+  if (tmp != NULL) {
+    s_destroi(tmp);
+  }
+
+  s_ok(s);
 }
 
 void s_substring(Str s, Str_c sb, int pos, int tam)
