@@ -24,6 +24,4 @@ int main()
   s_imprime(s);
   s_destroi(ss);
   s_destroi(s);
-
-  //gcc -g -o teste_str teste_str.c utf8.c str.c
 }

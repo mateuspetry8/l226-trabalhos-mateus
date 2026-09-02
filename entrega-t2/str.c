@@ -279,10 +279,15 @@ int s_busca_rc(Str_c s, int pos, Str_c sb)
 {
   s_ok(s);
   s_ok(sb);
-  for(int i = pos_absoluta(s, pos); i >= 0; i--) {
+
+  int ini = pos_absoluta(s, pos) - 1;
+  int n_s = s_tam(s);
+  if (ini >= n_s) ini = n_s - 1;
+
+  for (int i = ini; i >= 0; i--) {
     unichar c = s_ch(s, i);
-    for(int j = 0; j < s_tam(sb); j++) {
-      if(c == s_ch(sb, j)) {
+    for (int j = 0; j < s_tam(sb); j++) {
+      if (c == s_ch(sb, j)) {
         return i;
       }
     }
@@ -294,16 +299,21 @@ int s_busca_rnc(Str_c s, int pos, Str_c sb)
 {
   s_ok(s);
   s_ok(sb);
-  for(int i = pos_absoluta(s, pos); i >= 0; i--) {
+
+  int ini = pos_absoluta(s, pos) - 1;
+  int n_s = s_tam(s);
+  if (ini >= n_s) ini = n_s - 1;
+
+  for (int i = ini; i >= 0; i--) {
     unichar c = s_ch(s, i);
     bool achou = false;
-    for(int j = 0; j < s_tam(sb); j++) {
-      if(c == s_ch(sb, j)) {
+    for (int j = 0; j < s_tam(sb); j++) {
+      if (c == s_ch(sb, j)) {
         achou = true;
         break;
       }
     }
-    if(!achou) {
+    if (!achou) {
       return i;
     }
   }
@@ -446,10 +456,18 @@ void s_substring(Str s, Str_c sb, int pos, int tam)
 
   int novo_nbytes = fim_bytes - ini_bytes;
 
+  byte *temp = NULL;
+  if (novo_nbytes > 0) {
+    temp = malloc((size_t) novo_nbytes);
+    assert(temp != NULL);
+    memcpy(temp, sb->bytes + ini_bytes, (size_t) novo_nbytes);
+  }
+
   s_redimensiona(s, novo_nbytes);
 
   if (novo_nbytes > 0) {
     memcpy(s->bytes, sb->bytes + ini_bytes, (size_t) novo_nbytes);
+    free(temp);
   }
 
   s_ok(s);
@@ -468,11 +486,12 @@ void s_insere(Str s, int pos, Str_c sb)
 void s_insere_c(Str s, int pos, unichar c)
 {
   s_ok(s);
-  byte buf[4];
+  byte buf[5]; 
   int nbytes = u8_converte_pra_utf8(c, buf);
-  if (nbytes < 0) { 
-    return; 
-  }
+  if (nbytes < 0) return;
+
+  buf[nbytes] = '\0'; 
+
   Str tmp = s_cria((char *)buf);
   s_insere(s, pos, tmp);
   s_destroi(tmp);
@@ -496,8 +515,19 @@ void s_remove(Str s, int pos, int tam)
 void s_apara(Str s, Str_c sobras)
 {
   s_ok(s);
+  if (sobras == NULL || s->nbytes == 0) return;
   s_ok(sobras);
-  //...
+
+  int ini = s_busca_nc(s, 0, sobras);
+
+  if (ini < 0) {
+    s_redimensiona(s, 0);
+    s_ok(s);
+    return;
+  }
+
+  int fim = s_busca_rnc(s, -1, sobras);
+  s_substring(s, s, ini, fim - ini + 1);
 }
 
 // operações de E/S {{{1
@@ -505,13 +535,24 @@ void s_apara(Str s, Str_c sobras)
 void s_imprime(Str_c s)
 {
   s_ok(s);
-  //...
+  if (s->nbytes > 0) {
+    fwrite(s->bytes, 1, (size_t) s->nbytes, stdout);
+  }
+  printf("\n");
 }
 
 void s_grava_arquivo(Str_c s, char *nome)
 {
   s_ok(s);
-  //...
+  if (nome == NULL) return;
+
+  FILE *f = fopen(nome, "wb");
+  if (f == NULL) return;
+
+  if (s->nbytes > 0) {
+    fwrite(s->bytes, 1, (size_t) s->nbytes, f);
+  }
+  fclose(f);
 }
 
 
