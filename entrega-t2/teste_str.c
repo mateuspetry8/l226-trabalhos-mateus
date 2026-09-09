@@ -25,3 +25,5 @@ int main()
   s_destroi(ss);
   s_destroi(s);
 }
+
+//gcc -g -o teste_str teste_str.c utf8.c str.c
