@@ -555,6 +555,54 @@ void s_grava_arquivo(Str_c s, char *nome)
   fclose(f);
 }
 
+Str s_cria_número(double num)
+{
+  char buf[64];
 
-// vim: foldmethod=marker shiftwidth=2
+  snprintf(buf, sizeof(buf), "%f", num);
 
+  return s_cria(buf);
+
+  /*
+  Str snum = s_cria("");
+  
+  // Trata o caso especial do número zero
+  if (num == 0) {
+    s_insere_c(snum, 0, '0');
+    return snum;
+  }
+
+  bool negativo = false;
+  if (num < 0) {
+    negativo = true;
+    num = -num; // Trabalha com o valor absoluto
+  }
+
+  while (num > 0) {
+    int digito = num % 10;
+    s_insere_c(snum, 0, '0' + digito); // Empurra para a direita na posição 0
+    num /= 10;
+  }
+
+  if (negativo) {
+    s_insere_c(snum, 0, '-'); // Adiciona o sinal de menos no início
+  }
+
+  return snum;*/
+}
+double s_número(Str_c s)
+{
+  s_ok(s);
+
+  char *str_c = s_strc(s);
+  if (str_c == NULL) {
+    return 0.0;
+  }
+
+  char *endptr;
+  double valor = strtod(str_c, &endptr);
+
+  free(str_c);
+
+  return valor;
+}
