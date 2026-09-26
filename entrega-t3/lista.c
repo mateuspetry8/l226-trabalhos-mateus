@@ -112,43 +112,106 @@ void l_insere_fim(Lista l, dado_t d)
 // a primeira posição é 0
 void l_insere_pos(Lista l, dado_t d, int p)
 {
+    int tam = l_tam(l);
+    if (p < 0 || p > tam) {
+        return; 
+    }
 
+    if (p == 0) {
+        l_insere_inicio(l, d);
+        return;
+    }
+    if (p == tam) {
+        l_insere_fim(l, d);
+        return;
+    }
+    
+    No *atual = l->sentinela->prox;
+    for(int i = 0; i < p; i++) {
+        atual = atual->prox;
+    }
+
+    No *novo = malloc(sizeof(No));
+    novo->dado = d;
+    novo->ant = atual->ant;
+    novo->prox = atual;
+    atual->ant->prox = novo;
+    atual->ant = novo;
 }
 
 // retorna o dado no início da lista
 dado_t l_dado_inicio(Lista l)
 {
-
+    return l->sentinela->prox->dado;
 }
 
 // retorna o dado no final da lista
 dado_t l_dado_fim(Lista l)
 {
-
+    return l->sentinela->ant->dado;
 }
 
 // retorna o dado na posição pos da lista
 dado_t l_dado_pos(Lista l, int pos)
 {
-
+    if (pos < 0 || pos >= l_tam(l)) {
+        return NULL;
+    }
+    
+    No *atual = l->sentinela->prox;
+    for(int i = 0; i < pos; i++) {
+        atual = atual->prox;
+    }
+    return atual->dado;
 }
 
 // remove e retorna o dado no início da lista
 dado_t l_remove_inicio(Lista l)
 {
-
+    No *libera = l->sentinela->prox;
+    l->sentinela->prox = l->sentinela->prox->prox;
+    l->sentinela->prox->ant = l->sentinela;
+    dado_t d = libera->dado;
+    free(libera);
+    return d;
 }
 
 // remove e retorna o dado no final da lista
 dado_t l_remove_fim(Lista l)
 {
-
+    No *libera = l->sentinela->ant;
+    l->sentinela->ant = l->sentinela->ant->ant;
+    l->sentinela->ant->prox = l->sentinela;
+    dado_t d = libera->dado;
+    free(libera);
+    return d;
 }
 
 // remove e retorna o dado na posição pos da lista
 dado_t l_remove_pos(Lista l, int pos)
 {
+    int tam = l_tam(l);
+    if (pos < 0 || pos >= tam) {
+        return NULL; 
+    }
 
+    if (pos == 0) {
+        return l_remove_inicio(l);
+    }
+    if (pos == tam - 1) {
+        return l_remove_fim(l);
+    }
+    
+    No *libera = l->sentinela->prox;
+    for(int i = 0; i < pos; i++) {
+        libera = libera->prox;
+    }
+
+    dado_t d = libera->dado;
+    libera->ant->prox = libera->prox;
+    libera->prox->ant = libera->ant;
+    free(libera);
+    return d;
 }
 
 // funções para usar a lista como uma fila
