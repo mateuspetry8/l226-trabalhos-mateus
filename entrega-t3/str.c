@@ -562,34 +562,8 @@ Str s_cria_número(double num)
   snprintf(buf, sizeof(buf), "%f", num);
 
   return s_cria(buf);
-
-  /*
-  Str snum = s_cria("");
-  
-  // Trata o caso especial do número zero
-  if (num == 0) {
-    s_insere_c(snum, 0, '0');
-    return snum;
-  }
-
-  bool negativo = false;
-  if (num < 0) {
-    negativo = true;
-    num = -num; // Trabalha com o valor absoluto
-  }
-
-  while (num > 0) {
-    int digito = num % 10;
-    s_insere_c(snum, 0, '0' + digito); // Empurra para a direita na posição 0
-    num /= 10;
-  }
-
-  if (negativo) {
-    s_insere_c(snum, 0, '-'); // Adiciona o sinal de menos no início
-  }
-
-  return snum;*/
 }
+
 double s_número(Str_c s)
 {
   s_ok(s);
@@ -605,4 +579,15 @@ double s_número(Str_c s)
   free(str_c);
 
   return valor;
+}
+
+Str s_cria_unindo(Lista l, Str sep)
+{
+  Str nova = s_cria("");
+  int tamL = l_tam(l);
+  for(int i = 0; i < tamL; i++) {
+    s_anexa(nova, l_dado_pos(l, i));
+    if(i < tamL-1) s_anexa(nova, sep);
+  }
+  return nova;
 }
