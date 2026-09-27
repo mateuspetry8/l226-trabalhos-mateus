@@ -1,15 +1,10 @@
 #include "str.h"
+#include "calc.h"
 #include <stdio.h>
 
 int main()
 {
-    s_imprime(s_cria_número(10));
-    s_imprime(s_cria_número(14320));
-    s_imprime(s_cria_número(0));
-    s_imprime(s_cria_número(1));
-    s_imprime(s_cria_número(999));
-        s_imprime(s_cria_número(9.34));
-
+    le_arquivo_e_calcula();
 }
 
-//gcc -g -o teste teste.c utf8.c str.c
+//gcc -g -o teste teste.c utf8.c str.c lista.c calc.c -lm

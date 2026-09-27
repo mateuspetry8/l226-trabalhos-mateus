@@ -217,7 +217,7 @@ Str calculadora(Str expressão)
         Str topo = l_vazia(pilha_operadores) ? NULL : l_topo(pilha_operadores);
 
         if (token != NULL && eh_operando(token)) {
-            l_empilha(pilha_operandos, token);
+            l_empilha(pilha_operandos, s_cria_cópia(token));
             i++;
             continue;
         }
@@ -226,11 +226,12 @@ Str calculadora(Str expressão)
 
         switch (acao) {
             case ACAO_EMPILHA: 
-                l_empilha(pilha_operadores, token);
+                l_empilha(pilha_operadores, s_cria_cópia(token));
                 i++;
                 break;
             case ACAO_DESCARTA:
-                l_desempilha(pilha_operadores);
+                Str descartado = l_desempilha(pilha_operadores);
+                s_destroi(descartado);
                 i++;
                 break;
             case ACAO_OPERA: {
@@ -258,4 +259,34 @@ Str calculadora(Str expressão)
 
     limpa_calculo(tokens, pilha_operandos, pilha_operadores);
     return resultado;
+}
+
+void le_arquivo_e_calcula()
+{
+    Str conteudo = s_cria_de_arquivo("entrada.txt");
+    Str quebra_linha = s_cria("\n");
+
+    Lista linhas = l_cria_separando(conteudo, quebra_linha);
+    Lista saida = l_cria();
+
+    int n = l_tam(linhas);
+    for (int i = 0; i < n; i++) {
+        Str linha = l_dado_pos(linhas, i);
+        Str resultado = calculadora(linha);
+        l_insere_fim(saida, resultado);
+    }
+
+    Str texto_saida = s_cria_unindo(saida, quebra_linha);
+    s_grava_arquivo(texto_saida, "saida.txt");
+
+    // limpeza
+    s_destroi(conteudo);
+    s_destroi(quebra_linha);
+    s_destroi(texto_saida);
+
+    while (!l_vazia(linhas)) s_destroi(l_remove_inicio(linhas));
+    l_destroi(linhas);
+
+    while (!l_vazia(saida)) s_destroi(l_remove_inicio(saida));
+    l_destroi(saida);
 }
