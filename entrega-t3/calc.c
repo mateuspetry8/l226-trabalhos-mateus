@@ -1,6 +1,7 @@
 #include "calc.h"
 #include "str.h"
 
+#include <math.h>
 #include <stdio.h>
 
 typedef enum {
@@ -103,6 +104,23 @@ static bool eh_espaco(unichar c) {
     return c == ' ' || c == '\t' || c == '\n';
 }
 
+static bool eh_operando(Str token)
+{
+    if (s_tam(token) == 0) return false;
+    unichar c = s_ch(token, 0);
+    return eh_digito(c) || eh_ponto(c);
+}
+
+static void limpa_calculo(Lista tokens, Lista pilha_operandos, Lista pilha_operadores)
+{
+    while (!l_vazia(tokens)) s_destroi(l_remove_inicio(tokens));
+    l_destroi(tokens);
+    while (!l_vazia(pilha_operandos)) s_destroi(l_remove_inicio(pilha_operandos));
+    l_destroi(pilha_operandos);
+    while (!l_vazia(pilha_operadores)) s_destroi(l_remove_inicio(pilha_operadores));
+    l_destroi(pilha_operadores);
+}
+
 Lista tokeniza(Str txt)
 {
     Lista tokens = l_cria();
@@ -144,36 +162,100 @@ Lista tokeniza(Str txt)
     return tokens;
 }
 
+static bool operar(Str operador, Lista pilha_operandos)
+{
+    if(l_tam(pilha_operandos) < 2) return false;
+
+    Str s2 = l_desempilha(pilha_operandos);
+    Str s1 = l_desempilha(pilha_operandos);
+    double num2 = s_número(s2);
+    double num1 = s_número(s1);
+    s_destroi(s2);
+    s_destroi(s1);
+
+    double resultado = 0.0;
+
+    switch (s_ch(operador, 0)) {
+        case '+':
+            resultado = num1 + num2;
+            break;
+        case '-':
+            resultado = num1 - num2;
+            break;
+        case '*':
+            resultado = num1 * num2;
+            break;
+        case '/':
+            if (num2 == 0) return false; 
+            resultado = num1 / num2;
+            break;
+        case '^':
+            resultado = pow(num1, num2);
+            break;
+        default:
+            return false; 
+    }
+    Str resultado_str = s_cria_número(resultado);
+    l_empilha(pilha_operandos, resultado_str);
+    return true;
+}
+
 Str calculadora(Str expressão)
 {
     Lista tokens = tokeniza(expressão);
     Lista pilha_operandos = l_cria();
     Lista pilha_operadores = l_cria();
 
+    Str resultado = NULL;
+    int i = 0;
     int tam = l_tam(tokens);
+    bool erro = false;
+    bool terminou = false;
 
-    for(int i = 0; i < tam; i++) {
-        Str token = l_dado_pos(tokens, i);
-        if (classifica_operador(token) == CL_INVALIDA) {
+    while(!erro && !terminou) {
+        Str token = (i < tam) ? l_dado_pos(tokens, i) : NULL;
+        Str topo = l_vazia(pilha_operadores) ? NULL : l_topo(pilha_operadores);
+
+        if (token != NULL && eh_operando(token)) {
             l_empilha(pilha_operandos, token);
+            i++;
+            continue;
         }
-        else {
-            Acao acao = decide_acao(l_topo(pilha_operadores), token);
 
-            switch (acao) {
-                case ACAO_EMPILHA:
-                    l_empilha(pilha_operadores, token);
-                    break;
-                case ACAO_DESCARTA:
-                    l_desempilha(pilha_operadores);
-                    break;
-                case ACAO_OPERA:
-                    break;
-                case ACAO_TERMINA:
-                    break;
-                case ACAO_ERRO:
-                    break;
+        Acao acao = decide_acao(topo, token);
+
+        switch (acao) {
+            case ACAO_EMPILHA: 
+                l_empilha(pilha_operadores, token);
+                i++;
+                break;
+            case ACAO_DESCARTA:
+                l_desempilha(pilha_operadores);
+                i++;
+                break;
+            case ACAO_OPERA: {
+                Str op = l_desempilha(pilha_operadores);
+                if (!operar(op, pilha_operandos)) {
+                    erro = true;
+                }
+                s_destroi(op);
+                break;
             }
+            case ACAO_TERMINA:
+                terminou = true;
+                break;
+            case ACAO_ERRO:
+                erro = true;
+                break;
         }
     }
+
+    if (!erro && l_tam(pilha_operandos) == 1) {
+        resultado = s_cria_cópia(l_topo(pilha_operandos));
+    } else {
+        resultado = s_cria("#ERRO ");
+    }
+
+    limpa_calculo(tokens, pilha_operandos, pilha_operadores);
+    return resultado;
 }
