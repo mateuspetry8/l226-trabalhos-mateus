@@ -555,8 +555,16 @@ void s_grava_arquivo(Str_c s, char *nome)
 Str s_cria_número(double num)
 {
   char buf[400];
-
   snprintf(buf, sizeof(buf), "%f", num);
+
+  if (strchr(buf, '.') != NULL) {
+    int len = (int) strlen(buf);
+    while (len > 0 && buf[len - 1] == '0') len--;
+    if (len > 0 && buf[len - 1] == '.') len--;
+    buf[len] = '\0';
+  }
+
+  if (strcmp(buf, "-0") == 0) strcpy(buf, "0");
 
   return s_cria(buf);
 }

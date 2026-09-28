@@ -1,5 +1,2 @@
-#ERRO 
-#ERRO 
-#ERRO 
-3.500000
-#ERRO 
+-2
+-1

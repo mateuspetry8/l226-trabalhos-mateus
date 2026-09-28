@@ -149,7 +149,7 @@ Lista tokeniza(Str txt)
             i = j;
         }
         else if (eh_letra(c) || eh_cifrao(c)) {
-            int j = i;
+            int j = i + 1;
             while (j < tam && (eh_letra(s_ch(txt, j)) || eh_digito(s_ch(txt, j))
                               || eh_sublinhado(s_ch(txt, j)))) {
                 j++;
@@ -175,8 +175,9 @@ static bool numero_valido(Str tok)
     int n = s_tam(tok);
     int digitos = 0;
     int pontos = 0;
+    int ini = (n > 0 && s_ch(tok, 0) == '-') ? 1 : 0;   // pula o sinal
 
-    for (int i = 0; i < n; i++) {
+    for (int i = ini; i < n; i++) {
         unichar c = s_ch(tok, i);
         if (eh_digito(c)) digitos++;
         else if (eh_ponto(c)) pontos++;
@@ -190,7 +191,7 @@ static bool valor_operando(Str op, double *valor)
     if (s_tam(op) == 0) return false;
 
     unichar c = s_ch(op, 0);
-    if (eh_digito(c) || eh_ponto(c)) {
+    if (eh_digito(c) || eh_ponto(c) || c == '-') {      // aceita '-'
         if (!numero_valido(op)) return false;
         *valor = s_número(op);
         return true;
