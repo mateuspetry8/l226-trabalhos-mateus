@@ -107,7 +107,7 @@ static bool eh_digito(unichar c) {
 }
 
 static bool eh_espaco(unichar c) {
-    return c == ' ' || c == '\t' || c == '\n';
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
 static bool eh_operando(Str token)
@@ -148,10 +148,10 @@ Lista tokeniza(Str txt)
             l_insere_fim(tokens, token);
             i = j;
         }
-        else if (eh_letra(c) || eh_sublinhado(c) || eh_cifrao(c)) {
+        else if (eh_letra(c) || eh_cifrao(c)) {
             int j = i;
             while (j < tam && (eh_letra(s_ch(txt, j)) || eh_digito(s_ch(txt, j))
-                              || eh_sublinhado(s_ch(txt, j)) || eh_cifrao(s_ch(txt, j)))) {
+                              || eh_sublinhado(s_ch(txt, j)))) {
                 j++;
             }
             Str token = s_cria_substring(txt, i, j - i);
@@ -170,12 +170,28 @@ Lista tokeniza(Str txt)
 
 static Dicionário variaveis = NULL;
 
+static bool numero_valido(Str tok)
+{
+    int n = s_tam(tok);
+    int digitos = 0;
+    int pontos = 0;
+
+    for (int i = 0; i < n; i++) {
+        unichar c = s_ch(tok, i);
+        if (eh_digito(c)) digitos++;
+        else if (eh_ponto(c)) pontos++;
+        else return false;
+    }
+    return digitos >= 1 && pontos <= 1;
+}
+
 static bool valor_operando(Str op, double *valor)
 {
     if (s_tam(op) == 0) return false;
 
     unichar c = s_ch(op, 0);
     if (eh_digito(c) || eh_ponto(c)) {
+        if (!numero_valido(op)) return false;
         *valor = s_número(op);
         return true;
     }
@@ -305,11 +321,12 @@ Str calculadora(Str expressão)
                 l_empilha(pilha_operadores, s_cria_cópia(token));
                 i++;
                 break;
-            case ACAO_DESCARTA:
+            case ACAO_DESCARTA: {
                 Str descartado = l_desempilha(pilha_operadores);
                 s_destroi(descartado);
                 i++;
                 break;
+            }
             case ACAO_OPERA: {
                 Str op = l_desempilha(pilha_operadores);
                 if (!operar(op, pilha_operandos)) {
@@ -339,32 +356,19 @@ Str calculadora(Str expressão)
     return resultado;
 }
 
-void le_arquivo_e_calcula()
+void calculadora_finaliza(void)
 {
-    Str conteudo = s_cria_de_arquivo("entrada.txt");
-    Str quebra_linha = s_cria("\n");
+    if (variaveis == NULL) return;
 
-    Lista linhas = l_cria_separando(conteudo, quebra_linha);
-    Lista saida = l_cria();
+    chave_t chave;
+    valor_t valor;
 
-    int n = l_tam(linhas);
-    for (int i = 0; i < n; i++) {
-        Str linha = l_dado_pos(linhas, i);
-        Str resultado = calculadora(linha);
-        l_insere_fim(saida, resultado);
+    dic_inicia_percurso(variaveis);
+    while (dic_próximo(variaveis, &chave, &valor)) {
+        s_destroi((Str) chave);
+        s_destroi((Str) valor);
     }
 
-    Str texto_saida = s_cria_unindo(saida, quebra_linha);
-    s_grava_arquivo(texto_saida, "saida.txt");
-
-    // limpeza
-    s_destroi(conteudo);
-    s_destroi(quebra_linha);
-    s_destroi(texto_saida);
-
-    while (!l_vazia(linhas)) s_destroi(l_remove_inicio(linhas));
-    l_destroi(linhas);
-
-    while (!l_vazia(saida)) s_destroi(l_remove_inicio(saida));
-    l_destroi(saida);
+    dic_destrói(variaveis);
+    variaveis = NULL;
 }

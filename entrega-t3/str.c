@@ -395,9 +395,9 @@ void s_substitui(Str s, int pos, int tam, Str_c sb)
     res = malloc((size_t) novo_nbytes);
     assert(res != NULL);
 
-    memcpy(res, s->bytes, (size_t) prefixo);
-    memcpy(res + prefixo, sb->bytes, (size_t) troca);
-    memcpy(res + prefixo + troca, s->bytes + fim_bytes, (size_t) sufixo);
+    if (prefixo > 0) memcpy(res, s->bytes, (size_t) prefixo);
+    if (troca > 0) memcpy(res + prefixo, sb->bytes, (size_t) troca);
+    if (sufixo > 0) memcpy(res + prefixo + troca, s->bytes + fim_bytes, (size_t) sufixo);
   }
 
   s_redimensiona(s, novo_nbytes);
@@ -554,7 +554,7 @@ void s_grava_arquivo(Str_c s, char *nome)
 
 Str s_cria_número(double num)
 {
-  char buf[64];
+  char buf[400];
 
   snprintf(buf, sizeof(buf), "%f", num);
 
