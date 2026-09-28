@@ -87,7 +87,7 @@ static Acao decide_acao(Str topo, Str entrada)
 }
 
 static bool eh_letra(unichar c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '$';
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
 static bool eh_sublinhado(unichar c) {
@@ -114,7 +114,7 @@ static bool eh_operando(Str token)
 {
     if (s_tam(token) == 0) return false;
     unichar c = s_ch(token, 0);
-    return eh_digito(c) || eh_ponto(c);
+    return eh_digito(c) || eh_ponto(c) || eh_letra(c) || eh_cifrao(c);
 }
 
 static void limpa_calculo(Lista tokens, Lista pilha_operandos, Lista pilha_operadores)
@@ -168,16 +168,62 @@ Lista tokeniza(Str txt)
     return tokens;
 }
 
+static Dicionário variaveis = NULL;
+
+static bool valor_operando(Str op, double *valor)
+{
+    if (s_tam(op) == 0) return false;
+
+    unichar c = s_ch(op, 0);
+    if (eh_digito(c) || eh_ponto(c)) {
+        *valor = s_número(op);
+        return true;
+    }
+
+    if (variaveis == NULL) return false;
+
+    Str guardado = (Str) dic_busca(variaveis, op);
+    if (guardado == VALOR_NÃO_EXISTE) return false;
+
+    *valor = s_número(guardado);
+    return true;
+}
+
 static bool operar(Str operador, Lista pilha_operandos)
 {
     if(l_tam(pilha_operandos) < 2) return false;
 
     Str s2 = l_desempilha(pilha_operandos);
     Str s1 = l_desempilha(pilha_operandos);
-    double num2 = s_número(s2);
-    double num1 = s_número(s1);
+
+    if (s_ch(operador, 0) == '=') {
+        double valor;
+        bool ok = s_tam(s1) > 0
+               && (eh_letra(s_ch(s1, 0)) || eh_cifrao(s_ch(s1, 0)))
+               && valor_operando(s2, &valor);
+        if (ok) {
+            Str chave = s_cria_cópia(s1);
+            Str guardado = s_cria_número(valor);
+            Str antigo = (Str) dic_insere(variaveis, chave, guardado);
+            if (antigo != VALOR_NÃO_EXISTE) {
+                s_destroi(antigo);  
+                s_destroi(chave); 
+            }
+            l_empilha(pilha_operandos, s_cria_número(valor)); // cópia própria da pilha
+        }
+
+        s_destroi(s2);
+        s_destroi(s1);
+        return ok;
+    }
+
+    double num2, num1;
+    bool ok = valor_operando(s2, &num2) && valor_operando(s1, &num1);
+
     s_destroi(s2);
     s_destroi(s1);
+
+    if(!ok) return false;
 
     double resultado = 0.0;
 
@@ -226,14 +272,12 @@ static bool chave_menor(chave_t a, chave_t b)
     return na < nb;
 }
 
-static Dicionário variaveis = NULL;
-
 Str calculadora(Str expressão)
 {
     if (variaveis == NULL) {
         variaveis = dic_cria(chave_menor, chave_igual);
     }
-    
+
     Lista tokens = tokeniza(expressão);
     Lista pilha_operandos = l_cria();
     Lista pilha_operadores = l_cria();
@@ -283,8 +327,10 @@ Str calculadora(Str expressão)
         }
     }
 
-    if (!erro && l_tam(pilha_operandos) == 1) {
-        resultado = s_cria_cópia(l_topo(pilha_operandos));
+    double valor;
+    if (!erro && l_tam(pilha_operandos) == 1 
+        && valor_operando(l_topo(pilha_operandos), &valor)) {
+        resultado = s_cria_número(valor);
     } else {
         resultado = s_cria("#ERRO ");
     }
