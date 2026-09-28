@@ -86,20 +86,17 @@ Str s_cria(char const *strC)
 {
   Str s = malloc(sizeof(*s));
   assert(s != NULL);
+  s->nbytes = 0;
+  s->bytes = NULL;
+  s->cap = 0;
   
   if (strC == NULL || *strC == '\0') {
-    s->nbytes = 0;
-    s->bytes = NULL;
-    s->cap = 0;
     return s;
   }
   
   int nbytes = (int)strlen(strC);
   
   if (u8_conta_unichar_nos_bytes(nbytes, (byte *)strC) < 0) {
-    s->nbytes = 0;
-    s->bytes = NULL;
-    s->cap = 0;
     return s;
   }
   

@@ -1,5 +1,6 @@
 #include "calc.h"
 #include "str.h"
+#include "dicionario.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -10,6 +11,7 @@ typedef enum {
     CL_POT,
     CL_ABRE,
     CL_FECHA,
+    CL_IGUAL,
     CL_INVALIDA
 } ClasseOperador;
 
@@ -24,7 +26,8 @@ static ClasseOperador classifica_operador(Str token)
         case '^':            return CL_POT;
         case '(':            return CL_ABRE;
         case ')':            return CL_FECHA;
-        default:              return CL_INVALIDA;
+        case '=':            return CL_IGUAL;
+        default:             return CL_INVALIDA;
     }
 }
 
@@ -36,16 +39,17 @@ typedef enum {
     ACAO_TERMINA
 } Acao;
 
-enum { LINHA_V, LINHA_MM, LINHA_MD, LINHA_POT, LINHA_ABRE, N_LINHAS };
-enum { COL_FIM, COL_MM, COL_MD, COL_POT, COL_ABRE, COL_FECHA, N_COLUNAS };
+enum { LINHA_V, LINHA_MM, LINHA_MD, LINHA_POT, LINHA_ABRE, LINHA_IGUAL, N_LINHAS };
+enum { COL_FIM, COL_MM, COL_MD, COL_POT, COL_ABRE, COL_FECHA, COL_IGUAL, N_COLUNAS };
 
 static const Acao tabela[N_LINHAS][N_COLUNAS] = {
-    //           FIM           +-             */             ^              (              )
-    /* V    */ { ACAO_TERMINA, ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_ERRO },
-    /* +-   */ { ACAO_OPERA,   ACAO_OPERA,    ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_OPERA },
-    /* * /  */ { ACAO_OPERA,   ACAO_OPERA,    ACAO_OPERA,    ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_OPERA },
-    /* ^    */ { ACAO_OPERA,   ACAO_OPERA,    ACAO_OPERA,    ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_OPERA },
-    /* (    */ { ACAO_ERRO,    ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_DESCARTA },
+    //           FIM           +-             */             ^              (              )               =
+    /* V    */ { ACAO_TERMINA, ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_ERRO,     ACAO_EMPILHA},
+    /* +-   */ { ACAO_OPERA,   ACAO_OPERA,    ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_OPERA,    ACAO_EMPILHA},
+    /* * /  */ { ACAO_OPERA,   ACAO_OPERA,    ACAO_OPERA,    ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_OPERA,    ACAO_EMPILHA},
+    /* ^    */ { ACAO_OPERA,   ACAO_OPERA,    ACAO_OPERA,    ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_OPERA,    ACAO_EMPILHA},
+    /* (    */ { ACAO_ERRO,    ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_DESCARTA, ACAO_EMPILHA},
+    /* =    */ { ACAO_OPERA,   ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_EMPILHA,  ACAO_OPERA,    ACAO_EMPILHA },
 };
 
 static Acao decide_acao(Str topo, Str entrada)
@@ -59,6 +63,7 @@ static Acao decide_acao(Str topo, Str entrada)
             case CL_MUL_DIV:    linha = LINHA_MD;   break;
             case CL_POT:        linha = LINHA_POT;  break;
             case CL_ABRE:       linha = LINHA_ABRE; break;
+            case CL_IGUAL:      linha = LINHA_IGUAL; break;
             default: return ACAO_ERRO;
         }
     }
@@ -73,6 +78,7 @@ static Acao decide_acao(Str topo, Str entrada)
             case CL_POT:        coluna = COL_POT;   break;
             case CL_ABRE:       coluna = COL_ABRE;  break;
             case CL_FECHA:      coluna = COL_FECHA; break;
+            case CL_IGUAL:      coluna = COL_IGUAL;  break;
             default: return ACAO_ERRO;
         }
     }
@@ -200,8 +206,34 @@ static bool operar(Str operador, Lista pilha_operandos)
     return true;
 }
 
+static bool chave_igual(chave_t a, chave_t b)
+{
+    return s_igual((Str) a, (Str) b);
+}
+
+static bool chave_menor(chave_t a, chave_t b)
+{
+    Str sa = (Str) a;
+    Str sb = (Str) b;
+    int na = s_tam(sa);
+    int nb = s_tam(sb);
+    int n = na < nb ? na : nb;
+    for (int i = 0; i < n; i++) {
+        unichar ca = s_ch(sa, i);
+        unichar cb = s_ch(sb, i);
+        if (ca != cb) return ca < cb;
+    }
+    return na < nb;
+}
+
+static Dicionário variaveis = NULL;
+
 Str calculadora(Str expressão)
 {
+    if (variaveis == NULL) {
+        variaveis = dic_cria(chave_menor, chave_igual);
+    }
+    
     Lista tokens = tokeniza(expressão);
     Lista pilha_operandos = l_cria();
     Lista pilha_operadores = l_cria();
