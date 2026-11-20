@@ -44,7 +44,8 @@ int g_insere_nó(Grafo self, void *p_dado);
 //   tivesse existido
 void g_remove_nó(Grafo self, int nó);
 
-// altera o valor associado a um nó (copia o valor apontado por p_dado para
+// altera o valor associado a um nó 
+// (copia o valor apontado por p_dado para
 //   uma memória gerenciada pelo grafo)
 void g_altera_valor_do_nó(Grafo self, int nó, void *p_dado);
 

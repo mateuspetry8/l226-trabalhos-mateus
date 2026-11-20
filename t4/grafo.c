@@ -1,6 +1,8 @@
 #include "grafo.h"
 
 #include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 
 typedef struct aresta {
     int destino;
@@ -101,4 +103,47 @@ void g_remove_nó(Grafo self, int nó)
         }
     }
     
+}
+
+void g_altera_valor_do_nó(Grafo self, int nó, void *p_dado)
+{
+    memcpy(self->nos[nó].valor, p_dado, self->tam_no);
+}
+
+void *g_valor_do_nó(Grafo self, int nó)
+{
+    return self->nos[nó].valor;
+}
+
+int g_num_nós(Grafo self)
+{
+    return self->num_nos;
+}
+
+// Arestas
+
+void g_altera_valor_da_aresta(Grafo self, int nó_origem, int nó_destino,
+                              void *p_dado)
+{
+    Aresta **pa = &self->nos[nó_origem].prim_aresta;
+    while (*pa != NULL && (*pa)->destino != nó_destino) pa = &(*pa)->prox;
+    Aresta *a = *pa;
+
+    if (p_dado == NULL) {
+        if (a == NULL) return;
+        *pa = a->prox;
+        free(a->valor);
+        free(a);
+        return;
+    }
+    if (a == NULL) {
+        a = malloc(sizeof(Aresta));
+        if (a == NULL) return;
+        a->valor = malloc(self->tam_aresta);
+        if (a->valor == NULL) { free(a); return; }
+        a->destino = nó_destino;
+        a->prox = self->nos[nó_origem].prim_aresta;
+        self->nos[nó_origem].prim_aresta = a;
+    }
+    memcpy(a->valor, p_dado, self->tam_aresta);
 }
