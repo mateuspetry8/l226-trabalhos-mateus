@@ -4,7 +4,7 @@
 // Constantes para configurar o treinamento das redes neuronais
 
 // número de gerações de redes treinadas
-#define N_GERAÇÕES 8000
+#define N_GERAÇÕES 200
 // número de indivíduos em uma geração
 #define N_INDIVÍDUOS 500
 

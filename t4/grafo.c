@@ -210,14 +210,59 @@ void *g_próxima_aresta(Grafo self, int *p_nó_vizinho)
 
 // Algoritmos
 
+static int kahn(Grafo self, Fila ordem)
+{
+    int n = self->num_nos;
+    if (n == 0) return 0;
+
+    int *grau = calloc(n, sizeof(int));
+    if (grau == NULL) return -1;
+    for (int i = 0; i < n; i++) {
+        for (Aresta *a = self->nos[i].prim_aresta; a != NULL; a = a->prox) {
+            grau[a->destino]++;
+        }
+    }
+
+    Fila prontos = f_cria(sizeof(int));
+    if (prontos == NULL) {
+        free(grau);
+        return -1;
+    }
+    for (int i = 0; i < n; i++) {
+        if (grau[i] == 0) f_insere(prontos, &i);
+    }
+
+    int tirados = 0;
+    while (!f_tá_vazia(prontos)) {
+        int u;
+        f_remove(prontos, &u);
+        tirados++;
+        if (ordem != NULL) f_insere(ordem, &u);
+        for (Aresta *a = self->nos[u].prim_aresta; a != NULL; a = a->prox) {
+            if (--grau[a->destino] == 0) f_insere(prontos, &a->destino);
+        }
+    }
+
+    f_destrói(prontos);
+    free(grau);
+    return tirados;
+}
+
 bool g_tem_ciclo(Grafo self)
 {
-    return false;
+    int tirados = kahn(self, NULL);
+    if (tirados < 0) return false; 
+    return tirados < self->num_nos;
 }
 
 Fila g_ordem_topológica(Grafo self)
 {
-    Fila f = f_cria(sizeof(int));
-    for (int i = 0; i < self->num_nos; i++) f_insere(f, &i);
-    return f;
+    Fila ordem = f_cria(sizeof(int));
+    if (ordem == NULL) return NULL;
+    int tirados = kahn(self, ordem);
+    if (tirados != self->num_nos) {
+        f_destrói(ordem);
+        ordem = f_cria(sizeof(int));
+    }
+    return ordem;
 }
