@@ -86,22 +86,14 @@ Str s_cria(char const *strC)
 {
   Str s = malloc(sizeof(*s));
   assert(s != NULL);
+  s->nbytes = 0;
+  s->bytes = NULL;
+  s->cap = 0;
   
-  if (strC == NULL || *strC == '\0') {
-    s->nbytes = 0;
-    s->bytes = NULL;
-    s->cap = 0;
-    return s;
-  }
+  if (strC == NULL || *strC == '\0') return s;
   
   int nbytes = (int)strlen(strC);
-  
-  if (u8_conta_unichar_nos_bytes(nbytes, (byte *)strC) < 0) {
-    s->nbytes = 0;
-    s->bytes = NULL;
-    s->cap = 0;
-    return s;
-  }
+  if (u8_conta_unichar_nos_bytes(nbytes, (byte *)strC) < 0) return s;
   
   s_redimensiona(s, nbytes);
   memcpy(s->bytes, strC, (size_t)nbytes);
@@ -466,7 +458,7 @@ void s_substring(Str s, Str_c sb, int pos, int tam)
   s_redimensiona(s, novo_nbytes);
 
   if (novo_nbytes > 0) {
-    memcpy(s->bytes, sb->bytes + ini_bytes, (size_t) novo_nbytes);
+    memcpy(s->bytes, temp, (size_t) novo_nbytes); 
     free(temp);
   }
 
