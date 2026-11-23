@@ -5,6 +5,21 @@
 #include <math.h>
 #include <stdio.h>
 
+static const char *msg_erro = "";
+
+#define ERR_FALTA_FECHA   "falta )"
+#define ERR_FALTA_ABRE    "falta ("
+#define ERR_ATRIBUICAO    "atribuição exige variável à esquerda"
+#define ERR_VAR_INDEF     "variável não definida"
+#define ERR_FALTA_OPERANDO "falta operando"
+#define ERR_MAL_FORMADA   "expressão mal formada"
+
+static bool erro(const char *msg)
+{
+    msg_erro = msg;
+    return false;
+}
+
 typedef enum {
     CL_MAIS_MENOS,
     CL_MUL_DIV,
@@ -84,6 +99,18 @@ static Acao decide_acao(Str topo, Str entrada)
     }
 
     return tabela[linha][coluna];
+}
+
+static void erro_de_sintaxe(Str topo, Str entrada)
+{
+    if (entrada != NULL && classifica_operador(entrada) == CL_FECHA) {
+        erro(ERR_FALTA_ABRE);
+    } else if (entrada == NULL && topo != NULL
+               && classifica_operador(topo) == CL_ABRE) {
+        erro(ERR_FALTA_FECHA);
+    } else {
+        erro(ERR_MAL_FORMADA);
+    }
 }
 
 static bool eh_letra(unichar c) {
@@ -188,19 +215,19 @@ static bool numero_valido(Str tok)
 
 static bool valor_operando(Str op, double *valor)
 {
-    if (s_tam(op) == 0) return false;
+    if (s_tam(op) == 0) return erro(ERR_MAL_FORMADA);
 
     unichar c = s_ch(op, 0);
-    if (eh_digito(c) || eh_ponto(c) || c == '-') {      // aceita '-'
-        if (!numero_valido(op)) return false;
+    if (eh_digito(c) || eh_ponto(c) || c == '-') {
+        if (!numero_valido(op)) return erro(ERR_MAL_FORMADA);
         *valor = s_número(op);
         return true;
     }
 
-    if (variaveis == NULL) return false;
+    if (variaveis == NULL) return erro(ERR_VAR_INDEF);
 
     Str guardado = (Str) dic_busca(variaveis, op);
-    if (guardado == VALOR_NÃO_EXISTE) return false;
+    if (guardado == VALOR_NÃO_EXISTE) return erro(ERR_VAR_INDEF);
 
     *valor = s_número(guardado);
     return true;
@@ -208,25 +235,30 @@ static bool valor_operando(Str op, double *valor)
 
 static bool operar(Str operador, Lista pilha_operandos)
 {
-    if(l_tam(pilha_operandos) < 2) return false;
+    if (l_tam(pilha_operandos) < 2) return erro(ERR_FALTA_OPERANDO);
 
     Str s2 = l_desempilha(pilha_operandos);
     Str s1 = l_desempilha(pilha_operandos);
 
     if (s_ch(operador, 0) == '=') {
         double valor;
-        bool ok = s_tam(s1) > 0
-               && (eh_letra(s_ch(s1, 0)) || eh_cifrao(s_ch(s1, 0)))
-               && valor_operando(s2, &valor);
+        bool ok;
+        if (s_tam(s1) == 0
+            || !(eh_letra(s_ch(s1, 0)) || eh_cifrao(s_ch(s1, 0)))) {
+            ok = erro(ERR_ATRIBUICAO);
+        } else {
+            ok = valor_operando(s2, &valor);
+        }
+
         if (ok) {
             Str chave = s_cria_cópia(s1);
             Str guardado = s_cria_número(valor);
             Str antigo = (Str) dic_insere(variaveis, chave, guardado);
             if (antigo != VALOR_NÃO_EXISTE) {
-                s_destroi(antigo);  
-                s_destroi(chave); 
+                s_destroi(antigo);
+                s_destroi(chave);
             }
-            l_empilha(pilha_operandos, s_cria_número(valor)); // cópia própria da pilha
+            l_empilha(pilha_operandos, s_cria_número(valor));
         }
 
         s_destroi(s2);
@@ -240,32 +272,21 @@ static bool operar(Str operador, Lista pilha_operandos)
     s_destroi(s2);
     s_destroi(s1);
 
-    if(!ok) return false;
+    if (!ok) return false;
 
     double resultado = 0.0;
-
     switch (s_ch(operador, 0)) {
-        case '+':
-            resultado = num1 + num2;
-            break;
-        case '-':
-            resultado = num1 - num2;
-            break;
-        case '*':
-            resultado = num1 * num2;
-            break;
+        case '+': resultado = num1 + num2; break;
+        case '-': resultado = num1 - num2; break;
+        case '*': resultado = num1 * num2; break;
         case '/':
-            if (num2 == 0) return false; 
+            if (num2 == 0) return erro(ERR_MAL_FORMADA);
             resultado = num1 / num2;
             break;
-        case '^':
-            resultado = pow(num1, num2);
-            break;
-        default:
-            return false; 
+        case '^': resultado = pow(num1, num2); break;
+        default:  return erro(ERR_MAL_FORMADA);
     }
-    Str resultado_str = s_cria_número(resultado);
-    l_empilha(pilha_operandos, resultado_str);
+    l_empilha(pilha_operandos, s_cria_número(resultado));
     return true;
 }
 
@@ -291,6 +312,8 @@ static bool chave_menor(chave_t a, chave_t b)
 
 Str calculadora(Str expressão)
 {
+    msg_erro = "";
+
     if (variaveis == NULL) {
         variaveis = dic_cria(chave_menor, chave_igual);
     }
@@ -299,13 +322,12 @@ Str calculadora(Str expressão)
     Lista pilha_operandos = l_cria();
     Lista pilha_operadores = l_cria();
 
-    Str resultado = NULL;
     int i = 0;
     int tam = l_tam(tokens);
-    bool erro = false;
+    bool houve_erro = false;
     bool terminou = false;
 
-    while(!erro && !terminou) {
+    while (!houve_erro && !terminou) {
         Str token = (i < tam) ? l_dado_pos(tokens, i) : NULL;
         Str topo = l_vazia(pilha_operadores) ? NULL : l_topo(pilha_operadores);
 
@@ -315,24 +337,18 @@ Str calculadora(Str expressão)
             continue;
         }
 
-        Acao acao = decide_acao(topo, token);
-
-        switch (acao) {
-            case ACAO_EMPILHA: 
+        switch (decide_acao(topo, token)) {
+            case ACAO_EMPILHA:
                 l_empilha(pilha_operadores, s_cria_cópia(token));
                 i++;
                 break;
-            case ACAO_DESCARTA: {
-                Str descartado = l_desempilha(pilha_operadores);
-                s_destroi(descartado);
+            case ACAO_DESCARTA:
+                s_destroi(l_desempilha(pilha_operadores));
                 i++;
                 break;
-            }
             case ACAO_OPERA: {
                 Str op = l_desempilha(pilha_operadores);
-                if (!operar(op, pilha_operandos)) {
-                    erro = true;
-                }
+                if (!operar(op, pilha_operandos)) houve_erro = true;
                 s_destroi(op);
                 break;
             }
@@ -340,17 +356,30 @@ Str calculadora(Str expressão)
                 terminou = true;
                 break;
             case ACAO_ERRO:
-                erro = true;
+                erro_de_sintaxe(topo, token);
+                houve_erro = true;
                 break;
         }
     }
 
-    double valor;
-    if (!erro && l_tam(pilha_operandos) == 1 
-        && valor_operando(l_topo(pilha_operandos), &valor)) {
-        resultado = s_cria_número(valor);
-    } else {
+    double valor = 0.0;
+    if (!houve_erro) {
+        if (l_tam(pilha_operandos) != 1) {
+            erro(ERR_MAL_FORMADA);
+            houve_erro = true;
+        } else if (!valor_operando(l_topo(pilha_operandos), &valor)) {
+            houve_erro = true;
+        }
+    }
+
+    Str resultado;
+    if (houve_erro) {
         resultado = s_cria("#ERRO ");
+        Str msg = s_cria(msg_erro);
+        s_anexa(resultado, msg);
+        s_destroi(msg);
+    } else {
+        resultado = s_cria_número(valor);
     }
 
     limpa_calculo(tokens, pilha_operandos, pilha_operadores);

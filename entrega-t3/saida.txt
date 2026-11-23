@@ -1,2 +1,35 @@
--2
--1
+4
+7
+20
+5
+256
+20
+14
+512
+-5
+33.333333
+2.5
+1.414214
+0.3
+6.28
+21
+2
+15
+5
+8
+10
+11
+10
+100
+30
+10
+7
+14
+#ERRO falta )
+#ERRO falta (
+#ERRO atribuição exige variável à esquerda
+#ERRO variável não definida
+#ERRO falta operando
+#ERRO falta operando
+#ERRO expressão mal formada
+#ERRO expressão mal formada
