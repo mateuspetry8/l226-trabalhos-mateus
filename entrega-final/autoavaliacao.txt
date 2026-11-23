@@ -1,0 +1,17 @@
+Auto-avalição Laboratório de Programação 2
+
+Nota: 9
+
+Entreguei os trabalhos dentro do que foi pedido e eles funcionam. 
+Respeitei a separação entre interface e implementação dos TADs, 
+o que me fez usar melhor ponteiros para as diversas estruturas de dados, alocação dinâmica e modularização em C. 
+Incorporei as correções sugeridas no t1, t2 e t3 que estavam na planilha.
+
+TADs e implementação em C: domínio sólido.
+Listas, pilhas, filas e deques (contígua e encadeada): bom domínio, principalmente de listas duplamente encadeadas. Deque nem tanto.
+Árvores binárias e de busca: Não foram cobradas nos trabalhos mas compreendo as operações, balanceamento e percorrimento.
+Grafos e algoritmos: Compreendo as representações e os percursos, mas tenho um pouco de dificuldade na implementação.
+
+Justificativa: A nota reflete trabalhos corretos, uma boa assimilação dos TADs e das listas 
+e o tempo que me dediquei aprendendo e programando. 
+Ela não é maior porque ainda preciso praticar grafos.
