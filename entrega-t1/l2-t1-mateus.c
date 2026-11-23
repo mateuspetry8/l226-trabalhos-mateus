@@ -513,6 +513,7 @@ void calcula_pontos(estado_t *est)
     est->pontos += 2 * est->municao;
     est->pontos += 10 * est->escudos;
     est->pontos += est->pontos_guardados;
+    est->pontos_guardados = 0;
 }
 
 // menu de quando passa de onda esperando o jogador apertar r
@@ -544,6 +545,9 @@ void proxima_onda(estado_t *est)
 // quando clica esc ou perde aparece menu
 void perguntar_continuar_perdeu(estado_t *est)
 {
+    est->pontos += est->pontos_guardados;
+    est->pontos_guardados = 0;
+
     int top[TOP_SCORES];
     atualiza_top_scores(est->pontos);
     le_top_scores(top);
@@ -567,6 +571,8 @@ void perguntar_continuar_perdeu(estado_t *est)
 // mostra na tela a onda de dia
 void apresenta(estado_t *est)
 {
+    int total = est->pontos + est->pontos_guardados;
+
     if (!est->ehdia) {
         printf("\r\033[K%d", est->pontos);
         return;
@@ -576,7 +582,7 @@ void apresenta(estado_t *est)
     char *area = est->ehdia ? est->areadia : est->areanoite;
     int areatam = est->ehdia ? areadiatam : areanoitetam;
 
-    printf("\r\033[K%d %d %c", est->pontos, est->municao,
+    printf("\r\033[K%d %d %c", total, est->municao,
            armas[est->armaind]);
     for (int i = 1; i < areatam; i++) {
         printf("%c", area[i]);
